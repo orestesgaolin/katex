@@ -94,19 +94,168 @@ BoxNode _buildOp(OpNode group, Options options) {
   return withAtomClass(opBase.box, 'mop', options: options);
 }
 
-/// Builds an `op` that is the base of a `supsub` with display limits.
-/// Port of op.htmlBuilder's supsub path + assembleSupSub.
+/// Builds an `op` that is the base of a `supsub`.
+///
+/// Port of op.htmlBuilder's supsub path. KaTeX has two flags per operator:
+/// whether it produces *limits* (scripts stacked above/below) and whether it is
+/// a growing symbol. `\sum`/`\prod`/`\bigcup`/… default to `limits: true`, so in
+/// displaystyle their scripts stack via [_assembleSupSub] (TeXbook rule 13).
+/// `\int`/`\oint`/`\iint`/… default to `limits: false` (*nolimits*): their
+/// scripts go to the side as ordinary sup/sub, even in displaystyle — see
+/// [_buildOpSideSupSub]. The slanted integral sign needs its italic correction
+/// folded into the subscript so the sub tucks down-right under the slant rather
+/// than overlapping it.
 BoxNode buildOpSupSub(SupSubNode grp, Options options) {
   final group = grp.base! as OpNode;
   final opBase = _buildOpBase(group, options);
-  return _assembleSupSub(
-    opBase.box,
-    grp.sup,
-    grp.sub,
-    options,
-    options.style,
-    opBase.slant,
-    opBase.baseShift,
+
+  // Mirror supsub.js's htmlBuilderDelegate: limits ops stack above/below when
+  // in displaystyle or when they always handle their own scripts; otherwise
+  // the scripts render to the side (the nolimits / integral case).
+  final useLimits =
+      group.limits &&
+      (options.style.size == Style.DISPLAY.size ||
+          (group.alwaysHandleSupSub ?? false));
+
+  if (useLimits) {
+    return _assembleSupSub(
+      opBase.box,
+      grp.sup,
+      grp.sub,
+      options,
+      options.style,
+      opBase.slant,
+      opBase.baseShift,
+    );
+  }
+
+  return _buildOpSideSupSub(grp, opBase, options);
+}
+
+// Port of supsub.js's generic htmlBuilder (TeXbook rules 18a-f), specialised
+// for an op base. Used for nolimits ops (\int, \oint, \iint, …): the scripts
+// sit to the upper-/lower-right of the operator. Because our `op` base is a
+// span wrapping the glyph (rather than KaTeX's bare SymbolNode), the generic
+// supsub builder can't see the glyph's italic correction; we apply it here as
+// the subscript's left margin (KaTeX's `marginLeft = -base.italic`) so the
+// subscript tucks under the slanted integral sign instead of overlapping it.
+BoxNode _buildOpSideSupSub(
+  SupSubNode grp,
+  _OpBase opBase,
+  Options options,
+) {
+  final metrics = options.fontMetrics();
+  // The op base carries its own vertical centering (baseShift) inside its box,
+  // so we treat it as the supsub base directly.
+  final base = opBase.box;
+
+  var supShift = 0.0;
+  var subShift = 0.0;
+
+  BoxNode? supm;
+  BoxNode? subm;
+
+  if (grp.sup != null) {
+    final newOptions = options.havingStyle(options.style.sup());
+    supm = buildGroup(grp.sup, newOptions, options);
+    // Rule 18a: the op base is never a character box.
+    supShift =
+        base.height -
+        newOptions.fontMetrics()['supDrop'] *
+            newOptions.sizeMultiplier /
+            options.sizeMultiplier;
+  }
+
+  if (grp.sub != null) {
+    final newOptions = options.havingStyle(options.style.sub());
+    subm = buildGroup(grp.sub, newOptions, options);
+    subShift =
+        base.depth +
+        newOptions.fontMetrics()['subDrop'] *
+            newOptions.sizeMultiplier /
+            options.sizeMultiplier;
+  }
+
+  // Rule 18c: minimum sup shift.
+  final double minSupShift;
+  if (options.style == Style.DISPLAY) {
+    minSupShift = metrics['sup1'];
+  } else if (options.style.cramped) {
+    minSupShift = metrics['sup3'];
+  } else {
+    minSupShift = metrics['sup2'];
+  }
+
+  // Subscripts shouldn't be shifted by the operator's italic correction.
+  // Account for that by pulling the subscript back by the glyph's italic
+  // (KaTeX's `marginLeft = -base.italic`); this is what tucks the lower bound
+  // down-right of the slanted integral sign instead of out past it.
+  final subMarginLeft = subm == null ? 0.0 : -opBase.italic;
+
+  final BoxNode supsub;
+  if (supm != null && subm != null) {
+    supShift = math.max(
+      math.max(supShift, minSupShift),
+      supm.depth + 0.25 * metrics.xHeight,
+    );
+    subShift = math.max(subShift, metrics['sub2']);
+
+    final ruleWidth = metrics.defaultRuleThickness;
+    // Rule 18e.
+    final maxWidth = 4 * ruleWidth;
+    if ((supShift - supm.depth) - (subm.height - subShift) < maxWidth) {
+      subShift = maxWidth - (supShift - supm.depth) + subm.height;
+      final psi = 0.8 * metrics.xHeight - (supShift - supm.depth);
+      if (psi > 0) {
+        supShift += psi;
+        subShift -= psi;
+      }
+    }
+
+    supsub = makeVList(
+      positionType: VListPositionType.individualShift,
+      children: [
+        VListChild.elem(
+          _withLeftMargin(subm, subMarginLeft),
+          shift: subShift,
+        ),
+        VListChild.elem(supm, shift: -supShift),
+      ],
+    );
+  } else if (subm != null) {
+    // Rule 18b.
+    subShift = math.max(
+      math.max(subShift, metrics['sub1']),
+      subm.height - 0.8 * metrics.xHeight,
+    );
+    supsub = makeVList(
+      positionType: VListPositionType.shift,
+      positionData: subShift,
+      children: [VListChild.elem(_withLeftMargin(subm, subMarginLeft))],
+    );
+  } else if (supm != null) {
+    // Rule 18c, d.
+    supShift = math.max(
+      math.max(supShift, minSupShift),
+      supm.depth + 0.25 * metrics.xHeight,
+    );
+    supsub = makeVList(
+      positionType: VListPositionType.shift,
+      positionData: -supShift,
+      children: [VListChild.elem(supm)],
+    );
+  } else {
+    // No scripts: just the bare op.
+    return withAtomClass(base, 'mop', options: options);
+  }
+
+  return withAtomClass(
+    makeFragment([
+      base,
+      makeSpan([supsub], classes: const ['msupsub']),
+    ]),
+    'mop',
+    options: options,
   );
 }
 

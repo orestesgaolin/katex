@@ -5,6 +5,7 @@
 // Generated with jaspr_builder
 
 import 'package:jaspr/server.dart';
+import 'package:site/components/editor.dart' as _editor;
 import 'package:site/components/flutter_cell.dart' as _flutter_cell;
 import 'package:site/components/katex_js.dart' as _katex_js;
 import 'package:site/app.dart' as _app;
@@ -28,6 +29,10 @@ import 'package:site/app.dart' as _app;
 ServerOptions get defaultServerOptions => ServerOptions(
   clientId: 'main.client.dart.js',
   clients: {
+    _editor.Editor: ClientTarget<_editor.Editor>(
+      'editor',
+      params: __editorEditor,
+    ),
     _flutter_cell.FlutterCell: ClientTarget<_flutter_cell.FlutterCell>(
       'flutter_cell',
       params: __flutter_cellFlutterCell,
@@ -37,9 +42,12 @@ ServerOptions get defaultServerOptions => ServerOptions(
       params: __katex_jsKatexJs,
     ),
   },
-  styles: () => [..._app.App.styles],
+  styles: () => [..._app.App.styles, ..._editor.Editor.styles],
 );
 
+Map<String, Object?> __editorEditor(_editor.Editor c) => {
+  'initialTex': c.initialTex,
+};
 Map<String, Object?> __flutter_cellFlutterCell(_flutter_cell.FlutterCell c) => {
   'tex': c.tex,
   'displayMode': c.displayMode,

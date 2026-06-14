@@ -12,6 +12,7 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
 import 'components/comparison_row.dart';
+import 'components/editor.dart';
 import 'examples.dart';
 
 /// Heading height (px).
@@ -41,6 +42,8 @@ class App extends StatelessComponent {
           .text(' known MVP approximation — expected JS/Dart difference, not a bug.'),
         ]),
       ]),
+      // SITE-2: live editor above the comparison table.
+      const Editor(),
       div(classes: 'compare', [
         div(classes: 'col-headings', [
           div(classes: 'col-head source-head', [.text('TeX source')]),

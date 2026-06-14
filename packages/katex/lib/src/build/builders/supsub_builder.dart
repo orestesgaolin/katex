@@ -40,10 +40,18 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
   // Delegate to the inner group when it should handle its own scripts.
   final base = group.base;
   if (base is OpNode) {
+    // Limits ops (\sum, \prod, …) stack scripts above/below in displaystyle.
+    // Symbol ops also delegate when they DON'T take limits (\int, \oint, …):
+    // op_builders renders their scripts to the side with the glyph's italic
+    // correction folded into the subscript, which the generic supsub path
+    // can't do since our op base is a span (not a bare SymbolNode). Non-symbol
+    // nolimits ops (\sin, \log, …) stay on the generic path — they have no
+    // italic correction, so the two paths are equivalent for them.
     final delegate =
-        base.limits &&
-        (options.style.size == Style.DISPLAY.size ||
-            (base.alwaysHandleSupSub ?? false));
+        (base.limits &&
+            (options.style.size == Style.DISPLAY.size ||
+                (base.alwaysHandleSupSub ?? false))) ||
+        (!base.limits && base.symbol);
     if (delegate) {
       return buildOpSupSub(group, options);
     }
@@ -109,10 +117,25 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     minSupShift = metrics['sup2'];
   }
 
-  // Subscripts shouldn't be shifted by the base's italic correction.
+  // scriptspace is a font-size-independent size, so scale it appropriately for
+  // use as the marginRight (KaTeX: `makeEm((0.5 / ptPerEm) / multiplier)`). It
+  // is appended as a trailing kern to every script row, matching KaTeX's
+  // `marginRight` on each vlist child.
+  final marginRight = (0.5 / metrics.ptPerEm) / options.sizeMultiplier;
+
+  // KaTeX's `base instanceof SymbolNode` check: in this port a single-symbol
+  // base is a `mord` span wrapping one GlyphNode (our ord builders tag the
+  // glyph with an atom class via a span rather than mutating the glyph), so we
+  // unwrap to recover the underlying symbol and its italic correction.
+  final baseSymbol = _baseSymbol(builtBase);
+
+  // Subscripts shouldn't be shifted by the base's italic correction. Account
+  // for that by shifting the subscript back the appropriate amount (KaTeX's
+  // `marginLeft = -italic` on the subscript row). We only do this when the base
+  // is a single symbol (KaTeX: `base instanceof SymbolNode`).
   var subMarginLeft = 0.0;
-  if (subm != null && builtBase is GlyphNode) {
-    subMarginLeft = -builtBase.scaledItalic;
+  if (subm != null && baseSymbol != null) {
+    subMarginLeft = -baseSymbol.scaledItalic;
   }
 
   final BoxNode supsub;
@@ -137,8 +160,14 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     supsub = makeVList(
       positionType: VListPositionType.individualShift,
       children: [
-        VListChild.elem(_withLeftMargin(subm, subMarginLeft), shift: subShift),
-        VListChild.elem(supm, shift: -supShift),
+        VListChild.elem(
+          _withMargins(subm, left: subMarginLeft, right: marginRight),
+          shift: subShift,
+        ),
+        VListChild.elem(
+          _withMargins(supm, right: marginRight),
+          shift: -supShift,
+        ),
       ],
     );
   } else if (subm != null) {
@@ -149,7 +178,11 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     supsub = makeVList(
       positionType: VListPositionType.shift,
       positionData: subShift,
-      children: [VListChild.elem(_withLeftMargin(subm, subMarginLeft))],
+      children: [
+        VListChild.elem(
+          _withMargins(subm, left: subMarginLeft, right: marginRight),
+        ),
+      ],
     );
   } else if (supm != null) {
     supShift = math.max(
@@ -159,16 +192,25 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     supsub = makeVList(
       positionType: VListPositionType.shift,
       positionData: -supShift,
-      children: [VListChild.elem(supm)],
+      children: [VListChild.elem(_withMargins(supm, right: marginRight))],
     );
   } else {
     throw StateError('supsub must have either sup or sub.');
   }
 
+  // The base's italic correction sits between the base and the scripts. In
+  // KaTeX a single-symbol base carries it as a CSS `margin-right`, which pushes
+  // the whole msupsub span right by `italic`; the subscript then cancels it via
+  // its own negative `marginLeft` (see `subMarginLeft`) so only the superscript
+  // is offset. The box tree's GlyphNode.width excludes italic, so we reproduce
+  // the margin-right as an explicit kern between the base and the msupsub span.
+  final baseItalic = baseSymbol?.scaledItalic ?? 0.0;
+
   final mclass = atomClassOf(builtBase) ?? 'mord';
   return withAtomClass(
     makeFragment([
       builtBase,
+      if (baseItalic != 0) KernNode(baseItalic),
       makeSpan([supsub], classes: const ['msupsub']),
     ]),
     mclass,
@@ -176,10 +218,43 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
   );
 }
 
-// A negative-/positive-width left margin is modelled as a leading kern.
-BoxNode _withLeftMargin(BoxNode elem, double margin) {
-  if (margin == 0) {
+// Recovers the single underlying [GlyphNode] of a built base, or `null` if the
+// base is not a lone symbol. Mirrors KaTeX's `base instanceof SymbolNode`:
+// here the ord builders wrap the glyph in a `mord` span (to carry the atom
+// class), so a single-symbol base is a SpanNode whose only non-kern child is a
+// GlyphNode. (A multi-glyph base — e.g. a braced group — yields `null`, exactly
+// like KaTeX, where such a base is an Anchor/Span rather than a SymbolNode.)
+GlyphNode? _baseSymbol(BoxNode base) {
+  if (base is GlyphNode) {
+    return base;
+  }
+  if (base is SpanNode) {
+    GlyphNode? found;
+    for (final child in base.children) {
+      if (child is KernNode) {
+        continue;
+      }
+      if (child is GlyphNode && found == null) {
+        found = child;
+      } else {
+        return null; // more than one glyph, or a non-glyph child.
+      }
+    }
+    return found;
+  }
+  return null;
+}
+
+// Wraps [elem] with optional leading ([left]) and trailing ([right]) kerns,
+// modelling KaTeX's `marginLeft`/`marginRight` on a vlist child. A negative
+// left margin (the base-italic cancellation for subscripts) is a leading kern.
+BoxNode _withMargins(BoxNode elem, {double left = 0, double right = 0}) {
+  if (left == 0 && right == 0) {
     return elem;
   }
-  return makeFragment([KernNode(margin), elem]);
+  return makeFragment([
+    if (left != 0) KernNode(left),
+    elem,
+    if (right != 0) KernNode(right),
+  ]);
 }

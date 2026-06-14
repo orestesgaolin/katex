@@ -6,6 +6,7 @@
 
 import 'package:jaspr/client.dart';
 
+import 'package:site/components/editor.dart' deferred as _editor;
 import 'package:site/components/flutter_cell.dart' deferred as _flutter_cell;
 import 'package:site/components/katex_js.dart' deferred as _katex_js;
 
@@ -27,6 +28,10 @@ import 'package:site/components/katex_js.dart' deferred as _katex_js;
 /// ```
 ClientOptions get defaultClientOptions => ClientOptions(
   clients: {
+    'editor': ClientLoader(
+      (p) => _editor.Editor(initialTex: p['initialTex'] as String),
+      loader: _editor.loadLibrary,
+    ),
     'flutter_cell': ClientLoader(
       (p) => _flutter_cell.FlutterCell(
         tex: p['tex'] as String,

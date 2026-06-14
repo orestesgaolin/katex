@@ -144,6 +144,111 @@ void main() {
     });
   });
 
+  // T-033 (RC-3) — `\sqrt[n]{x}` root-index placement.
+  //
+  // KaTeX `functions/sqrt.ts` positions the optional index ("\rootBox") with:
+  //   * a vertical raise  `toShift = 0.6 * (body.height - body.depth)` applied
+  //     as the index VList's downward shift `-toShift` (so the VList depth is
+  //     exactly `-toShift`);
+  //   * fixed horizontal kerns from the `.sqrt > .root` CSS margins, themselves
+  //     transcribed from the TeX `\r@@t` definition: `margin-left: 5mu`,
+  //     `margin-right: -10mu`, with `1mu = 1/18 em`.
+  // These numbers are independent of the index width, so they must be identical
+  // for 1-, 2-, and 3-digit indices; only the index VList's own width grows.
+  //
+  // The values below were captured from ORIGINAL KaTeX's `__renderToDomTree`
+  // (full float precision): for `\sqrt[3]{x}` the `.root` VList is
+  // height=0.6585560000000001, depth=-0.3363360000000001, and the surd `body`
+  // VList is height=0.8002800000000001, depth=0.23972 — giving
+  // toShift = 0.6 * (0.8002800000000001 - 0.23972) = 0.3363360000000001.
+  group(r'root index (\sqrt[n]{x}) placement', () {
+    const muToEm = 1.0 / 18.0;
+    const expectedLeftKern = 5 * muToEm; // \mkern 5mu
+    const expectedRightKern = -10 * muToEm; // \mkern -10mu
+    // toShift for \sqrt{x}: body.height 0.8002800000000001, depth 0.23972.
+    const expectedToShift = 0.6 * (0.8002800000000001 - 0.23972);
+
+    // The scriptscript single-digit glyph width (KaTeX `mord.mtight`); the
+    // index is an ordgroup so an n-digit index is n times this wide.
+    const digitWidth = 0.25;
+
+    // Locates the `.root` wrapper span and the surd `.sqrt` span's two VLists:
+    // the index VList (inside `.root`) and the surd body VList (the sibling).
+    (SpanNode rootWrap, VList indexVList) findRoot(BoxNode root) {
+      final wrap = _flatten(root)
+          .whereType<SpanNode>()
+          .firstWhere((s) => s.classes.contains('root'));
+      final vlist = _flatten(wrap).whereType<VList>().first;
+      return (wrap, vlist);
+    }
+
+    test(r'no index: \sqrt{x} emits no .root wrapper (no regression)', () {
+      final nodes = _flatten(renderToBox(r'\sqrt{x}'));
+      expect(
+        nodes.whereType<SpanNode>().where((s) => s.classes.contains('root')),
+        isEmpty,
+        reason: r'plain \sqrt{x} must not introduce a root-index wrapper',
+      );
+    });
+
+    for (final (label, tex, digits) in [
+      ('1-digit', r'\sqrt[3]{x}', 1),
+      ('2-digit', r'\sqrt[10]{x}', 2),
+      ('3-digit', r'\sqrt[123]{x}', 3),
+    ]) {
+      test('$label index: vertical raise matches KaTeX exactly', () {
+        final root = renderToBox(tex);
+        final (_, indexVList) = findRoot(root);
+        // KaTeX shifts the index VList down by -toShift, so its depth is
+        // exactly -toShift (the VList has a single zero-depth child).
+        expect(
+          indexVList.depth,
+          closeTo(-expectedToShift, 1e-12),
+          reason: 'index raise must be 0.6*(body.height-body.depth)',
+        );
+        // The raise is width-independent: identical for every digit count.
+        expect(indexVList.depth, closeTo(-0.3363360000000001, 1e-12));
+      });
+
+      test('$label index: horizontal kerns are 5mu / -10mu', () {
+        final root = renderToBox(tex);
+        final (wrap, _) = findRoot(root);
+        // The .sqrt span holds: [Kern(5mu), root, Kern(-10mu), body]. Find the
+        // kerns flanking the `.root` wrapper.
+        final sqrtSpan = _flatten(root)
+            .whereType<SpanNode>()
+            .firstWhere((s) => s.classes.contains('sqrt'));
+        final kids = sqrtSpan.children;
+        final wrapIndex = kids.indexOf(wrap);
+        expect(wrapIndex, greaterThan(0), reason: 'root has a leading kern');
+        final left = kids[wrapIndex - 1];
+        final right = kids[wrapIndex + 1];
+        expect(left, isA<KernNode>());
+        expect(right, isA<KernNode>());
+        expect(
+          (left as KernNode).width,
+          closeTo(expectedLeftKern, 1e-12),
+          reason: r'left margin must be \mkern 5mu = 5/18 em',
+        );
+        expect(
+          (right as KernNode).width,
+          closeTo(expectedRightKern, 1e-12),
+          reason: r'right margin must be \mkern -10mu = -10/18 em',
+        );
+      });
+
+      test('$label index: VList width scales with digit count', () {
+        final root = renderToBox(tex);
+        final (_, indexVList) = findRoot(root);
+        expect(
+          indexVList.width,
+          closeTo(digits * digitWidth, 1e-9),
+          reason: 'an $digits-digit index is $digits x the digit width',
+        );
+      });
+    }
+  });
+
   // T-025 — accent rendering: glyph selection + centering + stretchy SVG.
   group('accent rendering', () {
     test(r'\hat{x} uses the Main-font circumflex glyph (U+005E)', () {
@@ -291,5 +396,206 @@ void main() {
         );
       });
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Big-operator scripts: limits (\sum/\prod/\bigcup) stack above/below in
+  // displaystyle, while nolimits integral-class ops (\int/\oint/\iint) put
+  // their scripts to the side (sup up-right, sub down-right), with the slanted
+  // glyph's italic correction folded into the subscript's left margin so the
+  // lower bound tucks under the sign instead of overlapping it.
+  //
+  // Mirrors KaTeX op.ts / supsub.ts: `\int` is `limits: false`, so its scripts
+  // render as ordinary sup/sub even in displaystyle.
+  // ---------------------------------------------------------------------------
+  group('big-operator scripts (limits vs nolimits)', () {
+    // Finds the .msupsub span (the side sup/sub column) if present.
+    SpanNode? findMsupsub(BoxNode root) {
+      for (final n in _flatten(root)) {
+        if (n is SpanNode && n.classes.contains('msupsub')) {
+          return n;
+        }
+      }
+      return null;
+    }
+
+    // Collects the leaf GlyphNodes' code points in left-to-right order.
+    List<int> glyphs(BoxNode root) => _flatten(root)
+        .whereType<GlyphNode>()
+        .map((g) => g.codepoint)
+        .toList();
+
+    test(r'\int_0^1 uses the side supsub layout (msupsub), not stacked limits',
+        () {
+      final root = renderToBox(
+        r'\int_0^1',
+        options: const KatexOptions(displayMode: true),
+      );
+      // Side layout: there must be a .msupsub span holding the scripts.
+      expect(findMsupsub(root), isNotNull,
+          reason: r'\int scripts must render to the side (nolimits)');
+      // The integral sign (U+222B) must be present as a bare glyph and the
+      // bounds 0/1 sit beside it.
+      expect(glyphs(root), contains(0x222b),
+          reason: 'integral sign glyph should be rendered');
+    });
+
+    test(r'\int_0^1 subscript carries a negative italic-correction left kern',
+        () {
+      final root = renderToBox(
+        r'\int_0^1',
+        options: const KatexOptions(displayMode: true),
+      );
+      final msupsub = findMsupsub(root)!;
+      // Inside the msupsub vlist, the subscript row is an HBox whose first
+      // child is a negative KernNode (= -italic of the integral sign). The
+      // superscript row has no such leading negative kern. This is what tucks
+      // the lower bound under the slanted sign.
+      final negKerns = _flatten(msupsub)
+          .whereType<KernNode>()
+          .where((k) => k.width < -1e-6)
+          .toList();
+      expect(negKerns, isNotEmpty,
+          reason: 'subscript must be pulled left by the integral italic '
+              'correction (KaTeX marginLeft = -base.italic)');
+    });
+
+    test(r'\oint_C places the single subscript to the side', () {
+      final root = renderToBox(
+        r'\oint_C',
+        options: const KatexOptions(displayMode: true),
+      );
+      expect(findMsupsub(root), isNotNull,
+          reason: r'\oint is nolimits: subscript goes to the side');
+    });
+
+    test(r'\sum_{i=0}^n keeps limits: scripts stack, no msupsub', () {
+      final root = renderToBox(
+        r'\sum_{i=0}^n',
+        options: const KatexOptions(displayMode: true),
+      );
+      // Limits layout stacks via the op-limits VList; it must NOT route
+      // through the side .msupsub column.
+      expect(findMsupsub(root), isNull,
+          reason: r'\sum in displaystyle stacks limits, not side scripts');
+      // The script column is taller than the bare operator: depth (i=0 below)
+      // and height (n above) both extend past the glyph.
+      final bare = renderToBox(
+        r'\sum',
+        options: const KatexOptions(displayMode: true),
+      );
+      expect(root.height, greaterThan(bare.height + 1e-6),
+          reason: r'upper limit n raises the height above the bare \sum');
+      expect(root.depth, greaterThan(bare.depth + 1e-6),
+          reason: r'lower limit i=0 extends the depth below the bare \sum');
+    });
+
+    test(r'\prod_{i=1}^n and \bigcup_{i=1}^n keep limits (no side column)', () {
+      // Isolated big-op scripts (no trailing `A_i`, whose own subscript would
+      // legitimately introduce a separate msupsub) must stack as limits.
+      for (final tex in [r'\prod_{i=1}^n', r'\bigcup_{i=1}^n']) {
+        final root = renderToBox(
+          tex,
+          options: const KatexOptions(displayMode: true),
+        );
+        expect(findMsupsub(root), isNull,
+            reason: '$tex must stack limits above/below, not to the side');
+      }
+    });
+
+    test(r'\int_0^1 in inline (non-display) mode also uses side scripts', () {
+      final root = renderToBox(r'\int_0^1');
+      expect(findMsupsub(root), isNotNull,
+          reason: r'\int is nolimits in every style');
+    });
+  });
+
+  // T-033 (RC-1) — supsub horizontal placement: scriptspace + base italic
+  // correction. KaTeX renders the base symbol with `margin-right: italic`,
+  // every script row with `margin-right: 0.5pt/ptPerEm/multiplier`
+  // (scriptspace), and a subscript with a compensating `margin-left: -italic`
+  // so only the superscript is offset by the slanted base. The box tree models
+  // those margins as kerns; these tests pin the exact em values.
+  group('supsub italic correction + scriptspace (RC-1)', () {
+    // Finds the msupsub span anywhere in the built tree.
+    SpanNode msupsubOf(BoxNode root) => _flatten(root)
+        .whereType<SpanNode>()
+        .firstWhere((s) => s.classes.contains('msupsub'));
+
+    // The HBox holding the base + (optional italic kern) + msupsub span.
+    HBox supsubHBoxOf(BoxNode root) =>
+        _flatten(root).whereType<HBox>().firstWhere(
+          (h) => h.children.any(
+            (c) => c is SpanNode && c.classes.contains('msupsub'),
+          ),
+        );
+
+    test('scriptspace (0.05em) trails the superscript row', () {
+      // x has italic 0, so the only horizontal kern in the sup row is the
+      // 0.5pt / 10ptPerEm / 1.0 = 0.05em scriptspace.
+      final msupsub = msupsubOf(renderToBox('x^2'));
+      final kerns = _flatten(msupsub).whereType<KernNode>().toList();
+      expect(kerns, isNotEmpty, reason: 'sup row carries a scriptspace kern');
+      expect(
+        kerns.any((k) => (k.width - 0.05).abs() < 1e-6),
+        isTrue,
+        reason: 'scriptspace must be exactly 0.05em (0.5pt / 10ptPerEm)',
+      );
+    });
+
+    test('zero-italic base (x) gets no italic kern before the scripts', () {
+      // Math-Italic x has italic 0, so no kern is inserted between base and
+      // msupsub: the HBox is [base-span, msupsub-span].
+      final hbox = supsubHBoxOf(renderToBox('x^2'));
+      expect(
+        hbox.children.whereType<KernNode>(),
+        isEmpty,
+        reason: 'x (italic 0) needs no base-italic kern',
+      );
+    });
+
+    test('slanted base (V) shifts the superscript by its italic (0.2222em)',
+        () {
+      // Math-Italic V has italic 0.22222. A bare base-italic kern of that size
+      // must sit between the base span and the msupsub span.
+      final hbox = supsubHBoxOf(renderToBox('V^2'));
+      final baseKern = hbox.children.whereType<KernNode>().toList();
+      expect(baseKern, hasLength(1), reason: 'one base-italic kern for V');
+      expect(
+        baseKern.single.width,
+        closeTo(0.22222, 1e-4),
+        reason: 'base-italic kern equals V italic correction',
+      );
+    });
+
+    test('subscript cancels the base italic via a negative left kern', () {
+      // For V^2_i the base-italic kern (+0.2222) pushes the msupsub right; the
+      // subscript row must carry a compensating -0.2222 leading kern so the
+      // subscript sits under the base, while the superscript stays offset.
+      final root = renderToBox('V^2_i');
+      final hbox = supsubHBoxOf(root);
+      final baseKern = hbox.children.whereType<KernNode>().single;
+      expect(baseKern.width, closeTo(0.22222, 1e-4));
+
+      final msupsub = msupsubOf(root);
+      final negKerns = _flatten(msupsub)
+          .whereType<KernNode>()
+          .where((k) => k.width < 0)
+          .toList();
+      expect(negKerns, hasLength(1), reason: 'subscript has one negative kern');
+      expect(
+        negKerns.single.width,
+        closeTo(-0.22222, 1e-4),
+        reason: 'subscript marginLeft cancels the base italic',
+      );
+    });
+
+    test('base italic does not change root height/depth (RC-1 is horizontal)',
+        () {
+      // The fix is purely horizontal: V^2 vertical metrics are unaffected.
+      final root = renderToBox('V^2');
+      expect(root.height, greaterThan(0));
+      expect(root.depth, closeTo(0, 1e-9));
+    });
   });
 }

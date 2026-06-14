@@ -237,6 +237,53 @@ void main() {
         reason: 'expected stretchy delimiter (paren bowl) ink at mid-left',
       );
     });
+    testWidgets(
+      r'\vec{x} arrow (static vec SVG) sits centered in the top band',
+      (tester) async {
+        // RC-4 regression: the non-stretchy `\vec` accent renders its arrow as
+        // an SvgPathNode (KaTeX `staticSvg("vec")`) placed in the accent vlist
+        // above the base. The painter must scale/position that SvgPathNode the
+        // same way the SVG serializer does — i.e. the small arrow lands in the
+        // TOP band, horizontally centered (plus the base's italic skew) over
+        // the base, NOT drifting far right or stretching down over the glyph.
+        final root = renderToBox(r'\vec{x}');
+        final img = await _rasterize(tester, root, 60);
+
+        // 1) Arrow ink is present in the top band (the arrow is above the x).
+        final topBand = Rect.fromLTWH(
+          0,
+          0,
+          img.width.toDouble(),
+          img.height * 0.20,
+        );
+        expect(
+          _inkCount(img, region: topBand),
+          greaterThan(0),
+          reason: r'expected \vec arrow ink in the top band',
+        );
+
+        // 2) The arrow is centered over the base (with the base's italic skew),
+        // not drawn flush to the left edge. The static "vec" SVG is ~0.471em
+        // wide centered over a ~0.571em base, so its left edge sits ~0.10em in
+        // (~0.18 of the box width). A mis-placed SvgPathNode drawn at the box
+        // origin (no centering kern) would light up this left strip.
+        // Pixel positions match the SVG serializer (verified out-of-band:
+        // arrow left ~0.10em, right ~0.54em in both backends), so this also
+        // guards SVG/Flutter agreement.
+        final leftStrip = Rect.fromLTWH(
+          0,
+          0,
+          img.width * 0.10,
+          img.height * 0.18,
+        );
+        expect(
+          _inkCount(img, region: leftStrip),
+          0,
+          reason: 'arrow must be centered (offset from the left edge), '
+              'not drawn at the box origin',
+        );
+      },
+    );
   });
 
   test('shouldRepaint reacts to root / fontSize / color changes', () {

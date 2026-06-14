@@ -47,6 +47,7 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-030](T-030-site-flutter-embed.md) | Site Flutter column: jaspr_flutter_embed + boot/sizing fixes | M7 | done | T-029 |
 | [T-031](T-031-render-correctness-batch.md) | Renderer correctness batch (site review: 15 bugs) | M6 | done | T-011, T-022, T-025 |
 | [T-032](T-032-gitignore-build-source.md) | Fix .gitignore ignoring lib/src/build source (never committed!) | M1 | done | — |
+| [T-033](T-033-render-refinements-and-editor.md) | Render refinements (site review #2) + live editor | M6/M7 | done | T-031 |
 
 ## Side-by-side findings (user review, 2026-06-14)
 Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`
