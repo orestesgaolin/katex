@@ -13,17 +13,22 @@ import 'package:jaspr/jaspr.dart';
 
 import 'components/comparison_row.dart';
 import 'components/editor.dart';
+import 'components/site_nav.dart';
 import 'examples.dart';
 
 /// Heading height (px).
 const int kHeadingHeight = 48;
 
+/// The comparison page (`/`) — the original three-way comparison table plus the
+/// live editor. Now fronted by the shared [SiteNav]. Kept named `App` so the
+/// existing `@css` styles and entrypoints continue to apply.
 class App extends StatelessComponent {
   const App({super.key});
 
   @override
   Component build(BuildContext context) {
     return div(classes: 'page', [
+      const SiteNav(active: SiteRoute.comparison),
       header(classes: 'site-header', [
         h1([.text('KaTeX renderer comparison')]),
         p(classes: 'subtitle', [

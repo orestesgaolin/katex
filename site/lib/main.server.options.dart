@@ -8,6 +8,8 @@ import 'package:jaspr/server.dart';
 import 'package:site/components/editor.dart' as _editor;
 import 'package:site/components/flutter_cell.dart' as _flutter_cell;
 import 'package:site/components/katex_js.dart' as _katex_js;
+import 'package:site/components/site_nav.dart' as _site_nav;
+import 'package:site/components/supported_page.dart' as _supported_page;
 import 'package:site/app.dart' as _app;
 
 /// Default [ServerOptions] for use with your Jaspr project.
@@ -42,7 +44,12 @@ ServerOptions get defaultServerOptions => ServerOptions(
       params: __katex_jsKatexJs,
     ),
   },
-  styles: () => [..._app.App.styles, ..._editor.Editor.styles],
+  styles: () => [
+    ..._app.App.styles,
+    ..._editor.Editor.styles,
+    ..._site_nav.SiteNav.styles,
+    ..._supported_page.SupportedPage.styles,
+  ],
 );
 
 Map<String, Object?> __editorEditor(_editor.Editor c) => {

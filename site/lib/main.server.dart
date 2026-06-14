@@ -8,8 +8,10 @@ library;
 
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
+import 'package:jaspr_router/jaspr_router.dart';
 
 import 'app.dart';
+import 'components/supported_page.dart';
 import 'main.server.options.dart';
 
 /// The base href the static site is served under.
@@ -54,6 +56,21 @@ void main() {
         ]),
       ),
     ],
-    body: const App(),
+    // The site is a static multi-page build. Wrapping the body in a [Router]
+    // makes `jaspr build` (generate mode) register and emit one HTML file per
+    // route — `/index.html` (comparison) and `/supported/index.html` (catalog)
+    // — each pre-rendering the page that matches its URL. Navigation between
+    // them is plain full-page `<a>` links (see SiteNav), which keeps the home
+    // page's `@client` KaTeX-JS islands and per-row embedded Flutter engines
+    // booting freshly per load. The `<base href>`, KaTeX css/js and
+    // flutter_bootstrap.js above stay in `<head>` for BOTH routes.
+    body: Router(routes: [
+      Route(path: '/', title: 'KaTeX renderer comparison', builder: (context, state) => const App()),
+      Route(
+        path: '/supported',
+        title: 'Supported functions · KaTeX comparison',
+        builder: (context, state) => const SupportedPage(),
+      ),
+    ]),
   ));
 }

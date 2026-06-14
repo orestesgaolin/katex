@@ -1,6 +1,6 @@
 # T-037 — "Supported functions" reference subpage (mirror katex.org/docs/supported)
 
-**Milestone:** M7 (site)  **Status:** todo (blocked on T-036 site agent finishing)  **Depends on:** T-024
+**Milestone:** M7 (site)  **Status:** review  **Depends on:** T-024
 
 ## Goal
 A second page on the comparison site — a categorized **catalog of TeX commands/symbols**, mirroring
