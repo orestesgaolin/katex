@@ -20,6 +20,7 @@ import 'package:universal_web/js_interop.dart';
 import 'package:universal_web/web.dart' as web;
 
 import 'dart_svg.dart';
+import 'gh_issue.dart';
 import 'math_cell_builder.dart';
 
 /// The global `katex` object exposed by the vendored `katex.min.js`.
@@ -248,6 +249,16 @@ class _EditorState extends State<Editor> {
           ),
           .text(' display mode'),
         ]),
+        a(
+          classes: 'issue-link',
+          href: ghIssueUrl(_tex, displayMode: _displayMode),
+          target: Target.blank,
+          attributes: const {
+            'rel': 'noopener',
+            'title': 'Report a rendering issue with this input',
+          },
+          [.text('⚠ report issue with this input')],
+        ),
       ]),
       div(classes: 'editor-outputs', [
         _outputCell('KaTeX JS', div(key: _jsHostKey, classes: 'katex-js', [])),

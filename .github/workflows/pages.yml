@@ -1,0 +1,83 @@
+name: Deploy comparison site to GitHub Pages
+
+# Builds the Jaspr static site (with embedded Flutter) and publishes it to
+# GitHub Pages. The site is served from a PROJECT page at
+# https://orestesgaolin.github.io/katex/, i.e. under the "/katex/" sub-path,
+# so the build sets <base href="/katex/"> via --dart-define=BASE_HREF.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "packages/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# Allow this workflow to publish to GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; cancel superseded in-progress runs.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  # The repo is served as a PROJECT page, so the base path is the repo name.
+  BASE_HREF: /katex/
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # jaspr_cli drives the static build (flutter: embedded, mode: static).
+      - name: Install jaspr CLI
+        run: dart pub global activate jaspr_cli
+
+      - name: Install site dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: dart analyze
+
+      # Clean build to avoid the stale-embedded-Flutter issue where a previous
+      # build/jaspr leaves outdated engine assets behind.
+      - name: Build static site for /katex/ sub-path
+        run: |
+          rm -rf .dart_tool/build build/jaspr
+          # `dart pub global activate` puts the `jaspr` executable on PATH.
+          jaspr build --dart-define BASE_HREF="$BASE_HREF"
+
+      # Prevent GitHub Pages' Jekyll from ignoring Flutter asset dirs/files that
+      # start with "_" (e.g. inside canvaskit/ and assets/).
+      - name: Disable Jekyll
+        run: touch build/jaspr/.nojekyll
+
+      - name: Verify base href was injected
+        run: grep -q '<base href="/katex/"' build/jaspr/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/build/jaspr
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -12,11 +12,21 @@ import 'package:jaspr/server.dart';
 import 'app.dart';
 import 'main.server.options.dart';
 
+/// The base href the static site is served under.
+///
+/// Defaults to `/` for local `jaspr serve` (served at the domain root). The
+/// GitHub Pages build overrides it via `jaspr build --dart-define=BASE_HREF=/katex/`
+/// so every relative asset URL (client JS/CSS, vendored KaTeX, and the embedded
+/// Flutter engine + canvaskit + fonts, which all resolve against `document.baseURI`)
+/// loads correctly under the `orestesgaolin.github.io/katex/` sub-path.
+const String _baseHref = String.fromEnvironment('BASE_HREF', defaultValue: '/');
+
 void main() {
   Jaspr.initializeApp(options: defaultServerOptions);
 
   runApp(Document(
     title: 'KaTeX renderer comparison',
+    base: _baseHref,
     head: [
       // Vendored KaTeX stylesheet (fonts referenced relatively from web/katex).
       link(rel: 'stylesheet', href: 'katex/katex.min.css'),

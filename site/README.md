@@ -41,6 +41,51 @@ jaspr build          # → build/jaspr/  (includes the compiled Flutter engine)
 `jaspr build` / `jaspr serve` compile the embedded Flutter automatically (via
 `jaspr: flutter: embedded`) — there is **no** separate `flutter build web` step.
 
+## Deployment (GitHub Pages, /katex/ sub-path)
+
+The site is published to GitHub Pages by
+[`.github/workflows/pages.yml`](../.github/workflows/pages.yml) on every push to
+`main` that touches `site/**` or `packages/**` (and via **Run workflow**). It is
+served from a **project** page at <https://orestesgaolin.github.io/katex/>, i.e.
+under the `/katex/` sub-path.
+
+**One-time setup:** in the GitHub repo, go to **Settings → Pages → Build and
+deployment → Source** and select **GitHub Actions**. (No `gh-pages` branch is
+used.) After that, pushes to `main` deploy automatically.
+
+### The base-path mechanism
+
+`jaspr build` emits `index.html` with **relative** asset URLs
+(`main.client.dart.js`, `flutter_bootstrap.js`, `katex/…`) plus a single
+`<base href>` element (Jaspr's `Document(base:)`, default `/`). The embedded
+Flutter loader resolves *its* assets too — `main.dart.js`, `canvaskit/`,
+`assets/FontManifest.json` + the `KaTeX_*` fonts — against `document.baseURI`,
+which `<base href>` sets. So **only `<base href>` needs to change** for the whole
+site (including the Flutter engine + fonts) to load under a sub-path.
+
+`lib/main.server.dart` reads the base from a compile-time define:
+
+```dart
+const String _baseHref = String.fromEnvironment('BASE_HREF', defaultValue: '/');
+// ... Document(base: _baseHref, ...)
+```
+
+- **Local** `jaspr serve` / `jaspr build` → `BASE_HREF` unset → `<base href="/">`
+  (served at the domain root, works as before).
+- **Pages build** → the workflow runs
+  `jaspr build --dart-define BASE_HREF=/katex/` → `<base href="/katex/">`, so all
+  relative assets resolve under `/katex/`.
+
+The workflow does a clean build (`rm -rf .dart_tool/build build/jaspr`) to avoid
+stale embedded-Flutter assets, then drops a `.nojekyll` into the artifact so
+GitHub Pages does not run Jekyll over the Flutter asset dirs (which contain
+`_`-prefixed paths), and deploys `build/jaspr` via `actions/deploy-pages`.
+
+Verified by building with `BASE_HREF=/katex/`, serving the output under a real
+`/katex/` path, and loading it in a browser: no asset 404s, and the KaTeX-JS,
+Dart-SVG, **and** embedded-Flutter columns all render (engine + KaTeX fonts
+loaded under `/katex/`).
+
 ## How each column is produced
 
 | Column | Package | Mechanism |

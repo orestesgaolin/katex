@@ -4,8 +4,15 @@ A fresh port of [KaTeX](https://katex.org) to Dart that renders LaTeX math **wit
 Flutter** (CLI / server / web / SSR) via a backend-agnostic **box tree** + SVG serializer,
 and as a **Flutter widget** that paints the same box tree.
 
+**🔎 Live demo:** <https://orestesgaolin.github.io/katex/> — every expression rendered three
+ways side by side (KaTeX JS · katex Dart→SVG · katex_flutter), with a live editor.
+
 > Status: **in active development.** See [`PLAN.md`](PLAN.md) for the architecture and
 > [`tickets/BOARD.md`](tickets/BOARD.md) for live progress.
+>
+> **pub.dev note:** the names `katex` and `katex_flutter` are already taken on pub.dev, so
+> these packages are currently unpublished (`publish_to: none`). Publishing would require a
+> rename (e.g. `katex_dart`).
 
 ## Packages
 

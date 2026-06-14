@@ -13,6 +13,7 @@ import 'package:jaspr/jaspr.dart';
 import '../examples.dart';
 import 'dart_svg.dart';
 import 'flutter_cell.dart';
+import 'gh_issue.dart';
 import 'katex_js.dart';
 
 /// Minimum per-row cell height (px). Rows grow taller for tall expressions.
@@ -39,6 +40,16 @@ class ComparisonRow extends StatelessComponent {
             attributes: {'title': example.note ?? 'known MVP approximation'},
             [.text('approx')],
           ),
+        a(
+          classes: 'issue-link',
+          href: ghIssueUrl(example.tex, displayMode: example.displayMode),
+          target: Target.blank,
+          attributes: const {
+            'rel': 'noopener',
+            'title': 'Report a rendering issue with this example',
+          },
+          [.text('⚠ report')],
+        ),
       ]),
       // Column 2: KaTeX JS (hydrated client-side).
       div(classes: 'cmp-cell', [

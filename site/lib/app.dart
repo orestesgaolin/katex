@@ -219,5 +219,21 @@ class App extends StatelessComponent {
           color: const Color('#cc0000'),
           fontSize: 0.75.rem,
         ),
+        // "Report issue" link — small/subtle, used in comparison rows and the
+        // live editor.
+        css('.issue-link', [
+          css('&').styles(
+            margin: Margin.symmetric(horizontal: 4.px),
+            color: const Color('#999'),
+            textDecoration: const TextDecoration(line: TextDecorationLine.none),
+            fontSize: 0.7.rem,
+          ),
+          css('&:hover').styles(
+            color: const Color('#cc0000'),
+            textDecoration: const TextDecoration(
+              line: TextDecorationLine.underline,
+            ),
+          ),
+        ]),
       ];
 }

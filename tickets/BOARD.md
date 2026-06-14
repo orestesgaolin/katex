@@ -49,6 +49,7 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-032](T-032-gitignore-build-source.md) | Fix .gitignore ignoring lib/src/build source (never committed!) | M1 | done | — |
 | [T-033](T-033-render-refinements-and-editor.md) | Render refinements (site review #2) + live editor | M6/M7 | done | T-031 |
 | [T-034](T-034-render-batch3-and-site-clip.md) | Integral indices + sqrt clearance + site Flutter clipping | M6/M7 | done | T-033 |
+| [T-035](T-035-publishing-prep.md) | Publishing prep: pub.dev metadata + GH issue button + Pages deploy | M7 | done | T-024 |
 
 ## Side-by-side findings (user review, 2026-06-14)
 Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`
