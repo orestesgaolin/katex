@@ -55,15 +55,25 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-038](T-038-port-full-macros.md) | Port full KaTeX macros.ts (~245 builtin macros) | M8 | done | T-007 |
 | [T-039](T-039-port-functions-no-box-changes.md) | Port remaining functions (html@mathml, mathchoice, phantom/lap/smash, arrows, def-family, …) | M8 | done | T-038 |
 | [T-040](T-040-port-enclose-functions.md) | Port enclose group (\boxed \cancel \colorbox …) + math-mode `$` switch | M8 | done | T-039 |
+| [T-041](T-041-final-coverage-100.md) | Final coverage: \phase, \includegraphics, \\ / \cr / \newline | M8 | done | T-040 |
 
-## Symbol/function coverage (M8, 2026-06-15)
+## Symbol/function coverage (M8, 2026-06-15) — COMPLETE
 Goal: "support remaining katex symbols." Probe = every KaTeX function+macro command name run through
-`renderToBox`, counting "Undefined control sequence". **UNDEFINED 338 → 21.** The residual 21 are all
-intentionally unsupported: grep-noise (`\x`, `\bracefrac`, `\brackfrac`), context-only (CD-env arrows,
-`\newline`), internal helpers (`\current@color`, `\global{let,future,long}`, `\abovefrac`, `\atopfrac`),
-image loading (`\includegraphics`), KaTeX's own TODO (`\varcoppa`), and niche legacy (`\phase`, `\d`,
-`\t`, `\sc`, `\sl`, `\textasciitilde`). Gates held throughout: oracle 26/26, 304 (katex) + 62
-(katex_flutter) tests green, analyze clean.
+`renderToBox`, counting "Undefined control sequence". **UNDEFINED 338 → 18, where the 18 are 100% of
+the genuine non-commands** — every real user-typable KaTeX 0.17.0 command now renders. The 18 residual,
+each verified against KaTeX source:
+- `\abovefrac \atopfrac \bracefrac \brackfrac` — double-backslash genfrac targets KaTeX marks
+  "can't be entered directly" (only the `\above`/`\atop`/`\brace`/`\brack` infixes are public).
+- `\cdleftarrow \cdrightarrow \cdlongequal` — CD-environment-internal control sequences.
+- `\current@color \globalfuture \globallet \globallong` — internal `@`/`\global`-prefix helpers.
+- `\d \t \sc \sl \x` — not defined anywhere in KaTeX 0.17.0 (probe grep noise).
+- `\varcoppa` — KaTeX's own broken TODO (`\mbox{\coppa}`); errors upstream too.
+- `\textasciitilde` — text-mode-only symbol; erroring in the math-mode probe matches KaTeX.
+
+Delivered across T-038 (~245 macros), T-039 (functions: html@mathml/mathchoice/phantom/lap/smash/
+arrows/def-family/…), T-040 (enclose group + `$`-mode switch), T-041 (\phase, \includegraphics,
+top-level `\\`/`\cr`/`\newline`). Gates held throughout: oracle 26/26 at 0.000% single-line, 304
+(katex) + 62 (katex_flutter) tests green, dart+flutter analyze clean.
 
 ## Side-by-side findings (user review, 2026-06-14)
 Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`
