@@ -192,6 +192,13 @@ BoxNode _buildOpSideSupSub(
   // down-right of the slanted integral sign instead of out past it.
   final subMarginLeft = subm == null ? 0.0 : -opBase.italic;
 
+  // scriptspace: KaTeX appends `marginRight = makeEm((0.5 / ptPerEm) / mult)`
+  // to *every* script row (generic supsub builder + the op nolimits DOM). It
+  // is a small font-size-independent gap after each bound; without it the
+  // scripts sit a hair too tight and the overall advance is narrower than
+  // KaTeX's, throwing off the bound/sign offset. Mirror the generic path.
+  final marginRight = (0.5 / metrics.ptPerEm) / options.sizeMultiplier;
+
   final BoxNode supsub;
   if (supm != null && subm != null) {
     supShift = math.max(
@@ -216,10 +223,13 @@ BoxNode _buildOpSideSupSub(
       positionType: VListPositionType.individualShift,
       children: [
         VListChild.elem(
-          _withLeftMargin(subm, subMarginLeft),
+          _withSideMargins(subm, left: subMarginLeft, right: marginRight),
           shift: subShift,
         ),
-        VListChild.elem(supm, shift: -supShift),
+        VListChild.elem(
+          _withSideMargins(supm, right: marginRight),
+          shift: -supShift,
+        ),
       ],
     );
   } else if (subm != null) {
@@ -231,7 +241,11 @@ BoxNode _buildOpSideSupSub(
     supsub = makeVList(
       positionType: VListPositionType.shift,
       positionData: subShift,
-      children: [VListChild.elem(_withLeftMargin(subm, subMarginLeft))],
+      children: [
+        VListChild.elem(
+          _withSideMargins(subm, left: subMarginLeft, right: marginRight),
+        ),
+      ],
     );
   } else if (supm != null) {
     // Rule 18c, d.
@@ -242,7 +256,7 @@ BoxNode _buildOpSideSupSub(
     supsub = makeVList(
       positionType: VListPositionType.shift,
       positionData: -supShift,
-      children: [VListChild.elem(supm)],
+      children: [VListChild.elem(_withSideMargins(supm, right: marginRight))],
     );
   } else {
     // No scripts: just the bare op.
@@ -400,4 +414,19 @@ BoxNode _withLeftMargin(BoxNode elem, double margin) {
     return elem;
   }
   return makeFragment([KernNode(margin), elem]);
+}
+
+// Wraps [elem] with optional leading ([left]) and trailing ([right]) kerns,
+// modelling KaTeX's `marginLeft`/`marginRight` on a side-script vlist child:
+// `left` is the negative base-italic cancellation for the subscript, `right`
+// is the scriptspace gap appended to every script row.
+BoxNode _withSideMargins(BoxNode elem, {double left = 0, double right = 0}) {
+  if (left == 0 && right == 0) {
+    return elem;
+  }
+  return makeFragment([
+    if (left != 0) KernNode(left),
+    elem,
+    if (right != 0) KernNode(right),
+  ]);
 }

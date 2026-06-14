@@ -23,7 +23,24 @@ BoxNode _buildGenfrac(GenfracNode group, Options options) {
   final dstyle = style.fracDen();
 
   var newOptions = options.havingStyle(nstyle);
-  final numerm = buildGroup(group.numer, newOptions, options);
+  var numerm = buildGroup(group.numer, newOptions, options);
+
+  if (group.continued) {
+    // `\cfrac` inserts a `\strut` into the numerator so that stacked continued
+    // fractions all line up at a fixed height/depth (TeXbook page 353).
+    // KaTeX mutates `numerm.height`/`numerm.depth`; our box tree is immutable,
+    // so we splice in a zero-width invisible strut (RuleNode width 0) sized to
+    // the strut minimums and let the wrapping HBox take the per-axis max. This
+    // matches KaTeX's `numerm.height = max(numerm.height, hStrut)` exactly.
+    final hStrut = 8.5 / options.fontMetrics().ptPerEm;
+    final dStrut = 3.5 / options.fontMetrics().ptPerEm;
+    if (numerm.height < hStrut || numerm.depth < dStrut) {
+      numerm = HBox([
+        RuleNode(width: 0, height: hStrut, depth: dStrut),
+        numerm,
+      ]);
+    }
+  }
 
   newOptions = options.havingStyle(dstyle);
   final denomm = buildGroup(group.denom, newOptions, options);

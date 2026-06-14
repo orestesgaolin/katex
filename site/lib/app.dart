@@ -193,12 +193,21 @@ class App extends StatelessComponent {
           // with a block whose child fills the grid-stretched cell. The cell is
           // stretched to the row height (set by the JS/SVG cells), so a height:100%
           // chain down to the FlutterEmbedView host gives the view a real height.
+          //
+          // SITE-clip: the embedded Flutter view is sized to its DOM host's box,
+          // and the math is vertically centred inside it. The row height is set
+          // by the JS/SVG cells, so the host must be at least as tall as the
+          // *full* Flutter math (height + DEPTH — descenders, fraction
+          // denominators, `cases`). `overflow:visible` lets the view paint past
+          // the (stretched) cell box if a row is slightly shorter than the math,
+          // so nothing is clipped along the bottom. The flutter column now also
+          // renders at the JS em-scale (see MathCell), so heights track closely.
           css('.flutter-cell', [
             css('&').styles(
               display: Display.block,
               minHeight: kRowMinHeight.px,
               padding: Padding.zero,
-              overflow: Overflow.hidden,
+              overflow: Overflow.visible,
               position: const Position.relative(),
             ),
             // FlutterEmbedView wrapper (div) + the loading placeholder.

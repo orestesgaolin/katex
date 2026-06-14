@@ -460,6 +460,28 @@ void main() {
               'correction (KaTeX marginLeft = -base.italic)');
     });
 
+    test(r'\int_0^1 side scripts carry the scriptspace (0.05em) right kern',
+        () {
+      // KaTeX appends `marginRight = 0.5pt / ptPerEm / multiplier` (= 0.05em at
+      // 10 ptPerEm, displaystyle) to *every* side-script row — both in the
+      // generic supsub builder and the op nolimits DOM. Without it the bounds
+      // sit a hair too tight and the operator's advance is narrower than
+      // KaTeX's, throwing off the bound/sign offset. Each of the two script
+      // rows (sup `1`, sub `0`) must therefore carry a +0.05em trailing kern.
+      final root = renderToBox(
+        r'\int_0^1',
+        options: const KatexOptions(displayMode: true),
+      );
+      final msupsub = findMsupsub(root)!;
+      final scriptspaceKerns = _flatten(msupsub)
+          .whereType<KernNode>()
+          .where((k) => (k.width - 0.05).abs() < 1e-6)
+          .toList();
+      expect(scriptspaceKerns, hasLength(2),
+          reason: 'both the sup and sub rows trail a 0.05em scriptspace kern '
+              '(KaTeX marginRight)');
+    });
+
     test(r'\oint_C places the single subscript to the side', () {
       final root = renderToBox(
         r'\oint_C',
@@ -596,6 +618,63 @@ void main() {
       final root = renderToBox('V^2');
       expect(root.height, greaterThan(0));
       expect(root.depth, closeTo(0, 1e-9));
+    });
+  });
+
+  // T-034 (RC-c) — genfrac nested-fraction depth + `\cfrac` strut.
+  //
+  // The bug: `\cfrac` was missing the `\strut` that KaTeX inserts into the
+  // numerator (genfrac.ts: numerm.height = max(numerm.height, 8.5/ptPerEm),
+  // numerm.depth = max(numerm.depth, 3.5/ptPerEm)). Without it, `\cfrac` chains
+  // were too short and a `\sqrt{\cfrac{…}}` radicand was undersized.
+  //
+  // The reference numbers below are ORIGINAL KaTeX
+  // `__renderToDomTree(...).{height, depth}` in displayMode (full precision),
+  // captured from the pinned KaTeX in reference/. Plain `\frac` is included as
+  // a no-regression guard.
+  group('genfrac nested-fraction depth (T-034 RC-c)', () {
+    const disp = KatexOptions(displayMode: true);
+
+    void expectRoot(String tex, double h, double d) {
+      final box = renderToBox(tex, options: disp);
+      expect(box.height, closeTo(h, 5e-4), reason: 'height of $tex');
+      expect(box.depth, closeTo(d, 5e-4), reason: 'depth of $tex');
+    }
+
+    test(r'plain \frac{a}{b} is unchanged (no regression)', () {
+      expectRoot(r'\frac{a}{b}', 1.10756, 0.68600);
+    });
+
+    test(r'\frac with nested-fraction denominator', () {
+      // The denominator is a tall sub-fraction; the clearance-adjusted denom
+      // shift must NOT double-count its extent.
+      expectRoot(r'\frac{a}{\frac{b}{c}}', 1.10756, 1.11511);
+    });
+
+    test(r'\frac with nested-fraction numerator', () {
+      expectRoot(r'\frac{\frac{a}{b}}{c}', 1.43039, 0.68600);
+    });
+
+    test(r'\cfrac inserts the numerator strut', () {
+      // `\cfrac{1}{1+x}` must be strictly taller than `\frac{1}{1+x}` because
+      // the strut floors the numerator height at 8.5/ptPerEm = 0.85.
+      final cfrac = renderToBox(r'\cfrac{1}{1+x}', options: disp);
+      final frac = renderToBox(r'\frac{1}{1+x}', options: disp);
+      expect(cfrac.height, greaterThan(frac.height));
+      expect(cfrac.height, closeTo(1.59000, 5e-4));
+      expect(cfrac.depth, closeTo(0.76933, 5e-4));
+    });
+
+    test(r'\cfrac chain matches KaTeX', () {
+      expectRoot(r'\cfrac{1}{1+\cfrac{1}{1+x}}', 1.59000, 2.24933);
+    });
+
+    test(r'\sqrt{\cfrac{…}} radicand is correctly sized', () {
+      expectRoot(
+        r'\sqrt{\cfrac{\infty111}{1111+\cfrac{111111111}{111+x}}}',
+        1.81775,
+        2.24933,
+      );
     });
   });
 }
