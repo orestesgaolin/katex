@@ -1,0 +1,172 @@
+{
+  "boxCount": 15,
+  "boxes": [
+    {
+      "classes": [
+        "katex"
+      ],
+      "depth": 0,
+      "height": 0.63056,
+      "path": "root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex-html"
+      ],
+      "depth": 0,
+      "height": 0.63056,
+      "path": "root/1:katex-html",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 0,
+      "height": 0.63056,
+      "path": "root/1:katex-html/0:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "overline"
+      ],
+      "depth": 0,
+      "height": 0.63056,
+      "path": "root/1:katex-html/0:base/1:mord.overline",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-t"
+      ],
+      "depth": 0,
+      "height": 0.63056,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-r"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r/0:vlist",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r/0:vlist/0:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r/0:vlist/0:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r/0:vlist/0:Span/1:mord",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathnormal"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r/0:vlist/0:Span/1:mord/0:mord.mathnormal",
+      "type": "SymbolNode",
+      "width": 0.57153
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0.04,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r/0:vlist/1:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r/0:vlist/1:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "overline-line"
+      ],
+      "depth": 0,
+      "height": 0.04,
+      "path": "root/1:katex-html/0:base/1:mord.overline/0:vlist-t/0:vlist-r/0:vlist/1:Span/1:overline-line",
+      "type": "Span",
+      "width": null
+    }
+  ],
+  "displayMode": false,
+  "dpr": 2,
+  "fallback": false,
+  "id": "overline-x",
+  "katexVersion": "0.17.0",
+  "pixelBox": {
+    "height": 21,
+    "width": 8.594
+  },
+  "root": {
+    "classes": [
+      "katex"
+    ],
+    "depth": 0,
+    "height": 0.63056,
+    "type": "Span",
+    "width": null
+  },
+  "tex": "\\overline{x}"
+}

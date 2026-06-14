@@ -1,0 +1,75 @@
+{
+  "boxCount": 5,
+  "boxes": [
+    {
+      "classes": [
+        "katex"
+      ],
+      "depth": 0,
+      "height": 0.44444,
+      "path": "root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex-html"
+      ],
+      "depth": 0,
+      "height": 0.44444,
+      "path": "root/1:katex-html",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 0,
+      "height": 0.44444,
+      "path": "root/1:katex-html/0:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathbf"
+      ],
+      "depth": 0,
+      "height": 0.44444,
+      "path": "root/1:katex-html/0:base/1:mord.mathbf",
+      "type": "SymbolNode",
+      "width": 0.60694
+    }
+  ],
+  "displayMode": false,
+  "dpr": 2,
+  "fallback": false,
+  "id": "mathbf-x",
+  "katexVersion": "0.17.0",
+  "pixelBox": {
+    "height": 21,
+    "width": 9.688
+  },
+  "root": {
+    "classes": [
+      "katex"
+    ],
+    "depth": 0,
+    "height": 0.44444,
+    "type": "Span",
+    "width": null
+  },
+  "tex": "\\mathbf{x}"
+}

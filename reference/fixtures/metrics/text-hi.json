@@ -1,0 +1,87 @@
+{
+  "boxCount": 6,
+  "boxes": [
+    {
+      "classes": [
+        "katex"
+      ],
+      "depth": 0,
+      "height": 0.69444,
+      "path": "root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex-html"
+      ],
+      "depth": 0,
+      "height": 0.69444,
+      "path": "root/1:katex-html",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 0,
+      "height": 0.69444,
+      "path": "root/1:katex-html/0:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "text"
+      ],
+      "depth": 0,
+      "height": 0.69444,
+      "path": "root/1:katex-html/0:base/1:mord.text",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "",
+        ""
+      ],
+      "depth": 0,
+      "height": 0.69444,
+      "path": "root/1:katex-html/0:base/1:mord.text/0:mord..",
+      "type": "SymbolNode",
+      "width": 0.55556
+    }
+  ],
+  "displayMode": false,
+  "dpr": 2,
+  "fallback": false,
+  "id": "text-hi",
+  "katexVersion": "0.17.0",
+  "pixelBox": {
+    "height": 21,
+    "width": 15.063
+  },
+  "root": {
+    "classes": [
+      "katex"
+    ],
+    "depth": 0,
+    "height": 0.69444,
+    "type": "Span",
+    "width": null
+  },
+  "tex": "\\text{hi}"
+}

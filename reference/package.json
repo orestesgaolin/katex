@@ -1,0 +1,16 @@
+{
+  "name": "katex-dart-reference-oracle",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Pinned KaTeX + headless-browser harness producing ground-truth fixtures (reference PNGs + metrics JSON) for the Dart port.",
+  "scripts": {
+    "fixtures": "node generate_fixtures.mjs"
+  },
+  "dependencies": {
+    "katex": "0.17.0",
+    "puppeteer": "^24.0.0",
+    "pngjs": "^7.0.0",
+    "pixelmatch": "^6.0.0"
+  }
+}

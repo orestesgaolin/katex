@@ -1,0 +1,26 @@
+name: katex (pure Dart)
+
+on:
+  push:
+    paths:
+      - "packages/katex/**"
+      - ".github/workflows/katex.yml"
+  pull_request:
+    paths:
+      - "packages/katex/**"
+      - ".github/workflows/katex.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/katex
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart analyze --fatal-infos
+      - run: dart test

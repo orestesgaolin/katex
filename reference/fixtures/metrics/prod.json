@@ -1,0 +1,86 @@
+{
+  "boxCount": 6,
+  "boxes": [
+    {
+      "classes": [
+        "katex-display"
+      ],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex"
+      ],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex-html"
+      ],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex/1:katex-html",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex/1:katex-html/0:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mop",
+        "op-symbol",
+        "large-op"
+      ],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-symbol.large-op",
+      "type": "SymbolNode",
+      "width": 1.27778
+    }
+  ],
+  "displayMode": true,
+  "dpr": 2,
+  "fallback": false,
+  "id": "prod",
+  "katexVersion": "0.17.0",
+  "pixelBox": {
+    "height": 30.969,
+    "width": 15.953
+  },
+  "root": {
+    "classes": [
+      "katex-display"
+    ],
+    "depth": 0.55001,
+    "height": 1.05,
+    "type": "Span",
+    "width": null
+  },
+  "tex": "\\prod"
+}

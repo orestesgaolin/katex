@@ -1,0 +1,82 @@
+name: katex_flutter
+description: A Flutter widget that renders LaTeX math by painting the backend-agnostic box tree produced by the pure-Dart katex package.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  katex:
+    path: ../katex
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^7.0.0
+
+flutter:
+  uses-material-design: true
+  # KaTeX glyph fonts (SIL OFL), copied from packages/katex/assets/fonts into
+  # this package's fonts/ dir so Flutter bundles them. Family names match
+  # KatexFont.cssFamily ("KaTeX_<Family>") so the painter can select them.
+  # Resolve with package: 'katex_flutter' (see lib/src/font_mapping.dart).
+  fonts:
+    - family: KaTeX_Main
+      fonts:
+        - asset: fonts/KaTeX_Main-Regular.ttf
+        - asset: fonts/KaTeX_Main-Bold.ttf
+          weight: 700
+        - asset: fonts/KaTeX_Main-Italic.ttf
+          style: italic
+        - asset: fonts/KaTeX_Main-BoldItalic.ttf
+          weight: 700
+          style: italic
+    - family: KaTeX_Math
+      fonts:
+        - asset: fonts/KaTeX_Math-Italic.ttf
+          style: italic
+        - asset: fonts/KaTeX_Math-BoldItalic.ttf
+          weight: 700
+          style: italic
+    - family: KaTeX_AMS
+      fonts:
+        - asset: fonts/KaTeX_AMS-Regular.ttf
+    - family: KaTeX_Size1
+      fonts:
+        - asset: fonts/KaTeX_Size1-Regular.ttf
+    - family: KaTeX_Size2
+      fonts:
+        - asset: fonts/KaTeX_Size2-Regular.ttf
+    - family: KaTeX_Size3
+      fonts:
+        - asset: fonts/KaTeX_Size3-Regular.ttf
+    - family: KaTeX_Size4
+      fonts:
+        - asset: fonts/KaTeX_Size4-Regular.ttf
+    - family: KaTeX_Caligraphic
+      fonts:
+        - asset: fonts/KaTeX_Caligraphic-Regular.ttf
+        - asset: fonts/KaTeX_Caligraphic-Bold.ttf
+          weight: 700
+    - family: KaTeX_Fraktur
+      fonts:
+        - asset: fonts/KaTeX_Fraktur-Regular.ttf
+        - asset: fonts/KaTeX_Fraktur-Bold.ttf
+          weight: 700
+    - family: KaTeX_SansSerif
+      fonts:
+        - asset: fonts/KaTeX_SansSerif-Regular.ttf
+        - asset: fonts/KaTeX_SansSerif-Bold.ttf
+          weight: 700
+        - asset: fonts/KaTeX_SansSerif-Italic.ttf
+          style: italic
+    - family: KaTeX_Script
+      fonts:
+        - asset: fonts/KaTeX_Script-Regular.ttf
+    - family: KaTeX_Typewriter
+      fonts:
+        - asset: fonts/KaTeX_Typewriter-Regular.ttf

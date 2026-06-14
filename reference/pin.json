@@ -1,0 +1,4 @@
+{
+  "katex": "0.17.0",
+  "note": "Resolved/verified by T-002 after `npm install`. This is the single source of truth for the KaTeX version all fixtures are generated from."
+}

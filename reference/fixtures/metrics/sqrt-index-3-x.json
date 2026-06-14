@@ -1,0 +1,316 @@
+{
+  "boxCount": 29,
+  "boxes": [
+    {
+      "classes": [
+        "katex"
+      ],
+      "depth": 0.23972,
+      "height": 0.80028,
+      "path": "root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex-html"
+      ],
+      "depth": 0.23972,
+      "height": 0.80028,
+      "path": "root/1:katex-html",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 0.23972,
+      "height": 0.80028,
+      "path": "root/1:katex-html/0:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "sqrt"
+      ],
+      "depth": 0.23972,
+      "height": 0.80028,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "root"
+      ],
+      "depth": 0,
+      "height": 0.65856,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-t"
+      ],
+      "depth": -0.33634,
+      "height": 0.65856,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root/0:vlist-t",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-r"
+      ],
+      "depth": 0,
+      "height": 0.32222,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root/0:vlist-t/0:vlist-r",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist"
+      ],
+      "depth": 0,
+      "height": 0.32222,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root/0:vlist-t/0:vlist-r/0:vlist",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0.32222,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root/0:vlist-t/0:vlist-r/0:vlist/0:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root/0:vlist-t/0:vlist-r/0:vlist/0:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "sizing",
+        "reset-size6",
+        "size1",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.32222,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root/0:vlist-t/0:vlist-r/0:vlist/0:Span/1:sizing.reset-size6.size1.mtight",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.64444,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root/0:vlist-t/0:vlist-r/0:vlist/0:Span/1:sizing.reset-size6.size1.mtight/0:mord.mtight",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "",
+        "",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.64444,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/0:root/0:vlist-t/0:vlist-r/0:vlist/0:Span/1:sizing.reset-size6.size1.mtight/0:mord.mtight/0:mord...mtight",
+      "type": "SymbolNode",
+      "width": 0.5
+    },
+    {
+      "classes": [
+        "vlist-t",
+        "vlist-t2"
+      ],
+      "depth": 0.23972,
+      "height": 0.80028,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-r"
+      ],
+      "depth": 0,
+      "height": 1,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist"
+      ],
+      "depth": 0,
+      "height": 1,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/0:vlist",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "svg-align"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:svg-align",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:svg-align/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:svg-align/1:mord",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathnormal"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:svg-align/1:mord/0:mord.mathnormal",
+      "type": "SymbolNode",
+      "width": 0.57153
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 1,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "hide-tail"
+      ],
+      "depth": 0,
+      "height": 1,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span/1:hide-tail",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-s"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/1:vlist-s",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/0:vlist-r/1:vlist-s/0:SymbolNode",
+      "type": "SymbolNode",
+      "width": 0
+    },
+    {
+      "classes": [
+        "vlist-r"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/1:vlist-r",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/1:vlist-r/0:vlist",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.sqrt/1:vlist-t.vlist-t2/1:vlist-r/0:vlist/0:Span",
+      "type": "Span",
+      "width": null
+    }
+  ],
+  "displayMode": false,
+  "dpr": 2,
+  "fallback": false,
+  "id": "sqrt-index-3-x",
+  "katexVersion": "0.17.0",
+  "pixelBox": {
+    "height": 21,
+    "width": 24.188
+  },
+  "root": {
+    "classes": [
+      "katex"
+    ],
+    "depth": 0.23972,
+    "height": 0.80028,
+    "type": "Span",
+    "width": null
+  },
+  "tex": "\\sqrt[3]{x}"
+}

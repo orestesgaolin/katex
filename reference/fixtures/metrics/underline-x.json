@@ -1,0 +1,219 @@
+{
+  "boxCount": 20,
+  "boxes": [
+    {
+      "classes": [
+        "katex"
+      ],
+      "depth": 0.2,
+      "height": 0.43056,
+      "path": "root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex-html"
+      ],
+      "depth": 0.2,
+      "height": 0.43056,
+      "path": "root/1:katex-html",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 0.2,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "underline"
+      ],
+      "depth": 0.2,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.underline",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-t",
+        "vlist-t2"
+      ],
+      "depth": 0.2,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-r"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/0:vlist",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0.04,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "underline-line"
+      ],
+      "depth": 0,
+      "height": 0.04,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span/1:underline-line",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span/1:mord",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathnormal"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span/1:mord/0:mord.mathnormal",
+      "type": "SymbolNode",
+      "width": 0.57153
+    },
+    {
+      "classes": [
+        "vlist-s"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/1:vlist-s",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/0:vlist-r/1:vlist-s/0:SymbolNode",
+      "type": "SymbolNode",
+      "width": 0
+    },
+    {
+      "classes": [
+        "vlist-r"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/1:vlist-r",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/1:vlist-r/0:vlist",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/1:mord.underline/0:vlist-t.vlist-t2/1:vlist-r/0:vlist/0:Span",
+      "type": "Span",
+      "width": null
+    }
+  ],
+  "displayMode": false,
+  "dpr": 2,
+  "fallback": false,
+  "id": "underline-x",
+  "katexVersion": "0.17.0",
+  "pixelBox": {
+    "height": 21,
+    "width": 8.594
+  },
+  "root": {
+    "classes": [
+      "katex"
+    ],
+    "depth": 0.2,
+    "height": 0.43056,
+    "type": "Span",
+    "width": null
+  },
+  "tex": "\\underline{x}"
+}

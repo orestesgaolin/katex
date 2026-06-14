@@ -1,0 +1,136 @@
+{
+  "boxCount": 11,
+  "boxes": [
+    {
+      "classes": [
+        "katex"
+      ],
+      "depth": 0.19444,
+      "height": 0.69444,
+      "path": "root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex-html"
+      ],
+      "depth": 0.19444,
+      "height": 0.69444,
+      "path": "root/1:katex-html",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 0.08333,
+      "height": 0.58333,
+      "path": "root/1:katex-html/0:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathnormal"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/1:katex-html/0:base/1:mord.mathnormal",
+      "type": "SymbolNode",
+      "width": 0.6397
+    },
+    {
+      "classes": [
+        "mspace"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/2:mspace",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mbin"
+      ],
+      "depth": 0.08333,
+      "height": 0.58333,
+      "path": "root/1:katex-html/0:base/3:mbin",
+      "type": "SymbolNode",
+      "width": 0.77778
+    },
+    {
+      "classes": [
+        "mspace"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/0:base/4:mspace",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 0.19444,
+      "height": 0.69444,
+      "path": "root/1:katex-html/1:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/1:katex-html/1:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathnormal"
+      ],
+      "depth": 0.19444,
+      "height": 0.69444,
+      "path": "root/1:katex-html/1:base/1:mord.mathnormal",
+      "type": "SymbolNode",
+      "width": 0.56563
+    }
+  ],
+  "displayMode": false,
+  "dpr": 2,
+  "fallback": false,
+  "id": "greek-alpha-beta",
+  "katexVersion": "0.17.0",
+  "pixelBox": {
+    "height": 21,
+    "width": 43.203
+  },
+  "root": {
+    "classes": [
+      "katex"
+    ],
+    "depth": 0.19444,
+    "height": 0.69444,
+    "type": "Span",
+    "width": null
+  },
+  "tex": "\\alpha+\\beta"
+}

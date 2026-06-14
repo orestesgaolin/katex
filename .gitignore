@@ -1,0 +1,22 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+**/doc/api/
+.fvm/
+
+# Node (reference oracle)
+reference/node_modules/
+
+# Test artifacts
+**/test/.diffs/
+**/failures/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.iml

@@ -1,0 +1,342 @@
+{
+  "boxCount": 31,
+  "boxes": [
+    {
+      "classes": [
+        "katex-display"
+      ],
+      "depth": 1.27767,
+      "height": 1.6514,
+      "path": "root",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex"
+      ],
+      "depth": 1.27767,
+      "height": 1.6514,
+      "path": "root/0:katex",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "katex-html"
+      ],
+      "depth": 1.27767,
+      "height": 1.6514,
+      "path": "root/0:katex/1:katex-html",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "base"
+      ],
+      "depth": 1.27767,
+      "height": 1.6514,
+      "path": "root/0:katex/1:katex-html/0:base",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "strut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/0:strut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mop",
+        "op-limits"
+      ],
+      "depth": 1.27767,
+      "height": 1.6514,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-t",
+        "vlist-t2"
+      ],
+      "depth": 1.27767,
+      "height": 1.6514,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist-r"
+      ],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist"
+      ],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0.46166,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "sizing",
+        "reset-size6",
+        "size3",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.46166,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span/1:sizing.reset-size6.size3.mtight",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.65952,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span/1:sizing.reset-size6.size3.mtight/0:mord.mtight",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathnormal",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.65952,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span/1:sizing.reset-size6.size3.mtight/0:mord.mtight/0:mord.mathnormal.mtight",
+      "type": "SymbolNode",
+      "width": 0.34451
+    },
+    {
+      "classes": [
+        "mrel",
+        "mtight"
+      ],
+      "depth": -0.13313,
+      "height": 0.36687,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span/1:sizing.reset-size6.size3.mtight/0:mord.mtight/1:mrel.mtight",
+      "type": "SymbolNode",
+      "width": 0.77778
+    },
+    {
+      "classes": [
+        "mord",
+        "",
+        "",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.64444,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/0:Span/1:sizing.reset-size6.size3.mtight/0:mord.mtight/2:mord...mtight",
+      "type": "SymbolNode",
+      "width": 0.5
+    },
+    {
+      "classes": [],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span/1:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mop",
+        "op-symbol",
+        "large-op"
+      ],
+      "depth": 0.55001,
+      "height": 1.05,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/1:Span/1:Span/0:mop.op-symbol.large-op",
+      "type": "SymbolNode",
+      "width": 1.44445
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0.30139,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/2:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "pstrut"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/2:Span/0:pstrut",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "sizing",
+        "reset-size6",
+        "size3",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.30139,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/2:Span/1:sizing.reset-size6.size3.mtight",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathnormal",
+        "mtight"
+      ],
+      "depth": 0,
+      "height": 0.43056,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/0:vlist/2:Span/1:sizing.reset-size6.size3.mtight/0:mord.mathnormal.mtight",
+      "type": "SymbolNode",
+      "width": 0.60023
+    },
+    {
+      "classes": [
+        "vlist-s"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/1:vlist-s",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/0:vlist-r/1:vlist-s/0:SymbolNode",
+      "type": "SymbolNode",
+      "width": 0
+    },
+    {
+      "classes": [
+        "vlist-r"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/1:vlist-r",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "vlist"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/1:vlist-r/0:vlist",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/1:mop.op-limits/0:vlist-t.vlist-t2/1:vlist-r/0:vlist/0:Span",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mspace"
+      ],
+      "depth": 0,
+      "height": 0,
+      "path": "root/0:katex/1:katex-html/0:base/2:mspace",
+      "type": "Span",
+      "width": null
+    },
+    {
+      "classes": [
+        "mord",
+        "mathnormal"
+      ],
+      "depth": 0,
+      "height": 0.65952,
+      "path": "root/0:katex/1:katex-html/0:base/3:mord.mathnormal",
+      "type": "SymbolNode",
+      "width": 0.34451
+    }
+  ],
+  "displayMode": true,
+  "dpr": 2,
+  "fallback": false,
+  "id": "sum-limits",
+  "katexVersion": "0.17.0",
+  "pixelBox": {
+    "height": 56.703,
+    "width": 26.813
+  },
+  "root": {
+    "classes": [
+      "katex-display"
+    ],
+    "depth": 1.27767,
+    "height": 1.6514,
+    "type": "Span",
+    "width": null
+  },
+  "tex": "\\sum_{i=0}^n i"
+}
