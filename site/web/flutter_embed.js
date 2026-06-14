@@ -57,8 +57,14 @@
 
   function startLoad() {
     window._flutter.loader.load({
-      // Resolve engine assets (main.dart.js, canvaskit) under /flutter/.
+      // Resolve engine assets under /flutter/. The Jaspr page is served at /,
+      // so without assetBase the engine fetches assets/FontManifest.json + the
+      // bundled KaTeX_* fonts from the page root (/assets/...) and 404s — the
+      // Math widgets then fall back to a non-KaTeX font and misalign. assetBase
+      // points runtime asset loads (FontManifest, fonts, AssetManifest) at
+      // flutter/assets/.
       config: {
+        assetBase: "flutter/",
         entrypointBaseUrl: "flutter/",
         canvasKitBaseUrl: "flutter/canvaskit/",
       },

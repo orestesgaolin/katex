@@ -41,6 +41,8 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-024](T-024-jaspr-comparison-site.md) | Jaspr site: KaTeX JS vs Dart side-by-side (jaspr serve + Flutter embed) | M7 | done | T-012, T-017, T-002 |
 | [T-025](T-025-accent-rendering.md) | Fix accent rendering (\hat \bar \vec \tilde \widehat) | M6 | done | T-011, T-022 |
 | [T-026](T-026-sqrt-index-placement.md) | Fix `\sqrt[n]` index placement | M6 | done | T-011, T-020, T-022 |
+| [T-027](T-027-glyph-skew-offset.md) | Glyph skew offset misplaced slanted glyphs (prime overlap + clip) | M6 | done | T-012, T-016 |
+| [T-028](T-028-site-flutter-fonts.md) | Site Flutter column wrong font (asset base 404) | M7 | done | T-024 |
 
 ## Side-by-side findings (user review, 2026-06-14)
 Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`
