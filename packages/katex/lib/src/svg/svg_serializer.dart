@@ -134,16 +134,16 @@ class _SvgSerializer {
   void _writeGlyph(GlyphNode node) {
     final family = node.font.cssFamily;
     final size = fontSize * node.size;
-    // KaTeX applies skew as a leftward shift of the glyph and italic as a
-    // rightward correction baked into following advance; for a single glyph we
-    // nudge the text x by (skew) and leave italic to the metrics-driven width.
-    // We expose skew as an x offset so accents land correctly when builders
-    // place a glyph with skew.
-    final dx = node.scaledSkew * fontSize;
+    // A glyph renders at its box origin. `skew` and `italic` are metadata for
+    // *builders* (accent placement, supsub italic correction) which bake any
+    // resulting shift into the box tree — they must NOT offset the glyph here,
+    // or slanted glyphs (e.g. math-italic `f`, skew 0.167em) get pushed into
+    // following content (overlapping `f'` primes) and past the viewBox
+    // (clipping).
     final style = _glyphStyle(node.font.variant);
 
     _buf
-      ..write('<text x="${_num(dx)}" y="0" ')
+      ..write('<text x="0" y="0" ')
       ..write('font-family="$family" ')
       ..write('font-size="${_num(size)}"')
       ..write(style)

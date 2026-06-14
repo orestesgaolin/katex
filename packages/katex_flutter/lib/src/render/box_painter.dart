@@ -168,9 +168,12 @@ class KatexBoxPainter extends CustomPainter {
     Color currentColor,
   ) {
     final tp = _textPainterFor(node, currentColor);
-    // KaTeX applies skew as a leftward/rightward nudge of the glyph (used for
-    // accent placement); mirror the serializer by offsetting x by skew.
-    final dx = x + node.scaledSkew * fontSize;
+    // A glyph paints at its box origin. `skew`/`italic` are metadata consumed
+    // by builders (accent placement, supsub correction) and are baked into the
+    // box tree — they must NOT offset the glyph here, or slanted glyphs
+    // (math-italic `f`, skew 0.167em) get pushed into following content
+    // (overlapping `f'` primes) and misaligned. Mirrors the SVG serializer.
+    final dx = x;
     // TextPainter paints from the top-left; shift up by the distance from the
     // text's top to its alphabetic baseline so the glyph baseline lands on
     // baselineY.
