@@ -71,6 +71,7 @@ class MacroExpander implements MacroContext {
   late Lexer lexer;
 
   /// The macro namespace (builtins + user/global macros).
+  @override
   late Namespace<MacroDefinition> macros;
 
   /// The pushback token stack. Contains tokens in REVERSE order (top = last).
@@ -114,11 +115,13 @@ class MacroExpander implements MacroContext {
   }
 
   /// Start a new group nesting within all namespaces.
+  @override
   void beginGroup() {
     macros.beginGroup();
   }
 
   /// End current group nesting within all namespaces.
+  @override
   void endGroup() {
     macros.endGroup();
   }
@@ -255,6 +258,13 @@ class MacroExpander implements MacroContext {
     return MacroArg(tokens: reversed, start: start, end: tok);
   }
 
+  /// Consume a single (optionally delimited) argument and return its tokens.
+  ///
+  /// Mirrors KaTeX's `consumeArg().tokens` (used by macro functions).
+  @override
+  List<Token> consumeArgTokens([List<String>? delims]) =>
+      consumeArg(delims).tokens;
+
   /// Consume [numArgs] (optionally delimited) arguments and return them.
   ///
   /// Mirrors KaTeX's `consumeArgs`.
@@ -387,6 +397,7 @@ class MacroExpander implements MacroContext {
 
   /// Fully expand the given [tokens] (in reverse order) and return the
   /// resulting tokens in forward order.
+  @override
   List<Token> expandTokens(List<Token> tokens) {
     final output = <Token>[];
     final oldStackLength = stack.length;
