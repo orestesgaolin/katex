@@ -258,6 +258,7 @@ class MacroExpander implements MacroContext {
   /// Consume [numArgs] (optionally delimited) arguments and return them.
   ///
   /// Mirrors KaTeX's `consumeArgs`.
+  @override
   List<List<Token>> consumeArgs(int numArgs, [List<List<String>>? delimiters]) {
     if (delimiters != null) {
       if (delimiters.length != numArgs + 1) {

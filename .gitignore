@@ -1,7 +1,9 @@
 # Dart / Flutter
 .dart_tool/
 .packages
+# Build OUTPUT only — NOT lib/src/build/, which is package source code.
 build/
+!**/lib/src/build/
 .flutter-plugins
 .flutter-plugins-dependencies
 pubspec.lock

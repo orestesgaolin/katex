@@ -54,6 +54,21 @@ import 'package:katex/src/font/font_types.dart';
 /// override per-call via [serializeBox]'s `fontSize`.
 const double defaultFontSize = 44;
 
+/// Padding added around the content box, in **em**, so the SVG viewBox does not
+/// clip glyph ink that overshoots the metric box.
+///
+/// The box-tree dimensions (the `height`/`depth`/`width` of [BoxNode]) are the
+/// *metric* box (the values KaTeX lays out with). Real glyph ink extends past
+/// it: ascenders/diacritics rise above the reported height, descenders drop
+/// below the depth, and a slanted last glyph (math-italic) or a glyph with
+/// negative left bearing pokes out the sides. With the viewBox set to exactly
+/// the metric box, that overshoot is clipped (RC-E: `\mathcal{ABCL}`, `\mathsf`,
+/// `\scriptstyle`, `\cfrac`). We add a small symmetric margin so the drawn
+/// content is fully enclosed. The pad is symmetric (added equally on all four
+/// sides), so the content's top-left only shifts by [_contentPadEm] — small
+/// enough not to disturb the lenient top-left-composited SVG golden test.
+const double _contentPadEm = 0.08;
+
 /// Serializes [root] to a complete, self-contained SVG document string.
 ///
 /// [fontSize] is the em → user-unit scale (see [defaultFontSize]); larger
@@ -81,11 +96,18 @@ class _SvgSerializer {
     final widthU = root.width * fontSize;
     final heightU = root.height * fontSize;
     final depthU = root.depth * fontSize;
+    // A symmetric margin so glyph ink that overshoots the metric box
+    // (ascenders, descenders, italic / negative-bearing overhang on edge
+    // glyphs) is not clipped by the viewBox. See [_contentPadEm].
+    final pad = _contentPadEm * fontSize;
     // Total drawing height spans from the top of the box (height above the
-    // baseline) to the bottom (depth below). Guard against degenerate zero.
+    // baseline) to the bottom (depth below), plus the pad on each side. Guard
+    // against degenerate zero.
     final totalHeightU = heightU + depthU;
-    final svgWidth = widthU <= 0 ? 0.0 : widthU;
-    final svgHeight = totalHeightU <= 0 ? 0.0 : totalHeightU;
+    final contentW = widthU <= 0 ? 0.0 : widthU;
+    final contentH = totalHeightU <= 0 ? 0.0 : totalHeightU;
+    final svgWidth = contentW + 2 * pad;
+    final svgHeight = contentH + 2 * pad;
 
     _buf
       ..write('<svg xmlns="http://www.w3.org/2000/svg" ')
@@ -94,9 +116,12 @@ class _SvgSerializer {
 
     _writeFontDefs();
 
-    // Move the origin down to the root baseline so children can be placed in
-    // baseline-relative em coordinates (y grows downward).
-    _buf.write('<g transform="translate(0,${_num(heightU)})">');
+    // Move the origin down to the root baseline (and right/down by the pad) so
+    // children can be placed in baseline-relative em coordinates (y grows
+    // downward) with the margin all around.
+    _buf.write(
+      '<g transform="translate(${_num(pad)},${_num(heightU + pad)})">',
+    );
     _writeNode(root);
     _buf
       ..write('</g>')

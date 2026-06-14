@@ -32,6 +32,7 @@ void ensureRegistered() {
   _registerOverlineUnderline();
   _registerText();
   _registerMclass();
+  _registerKern();
   _registerRelax();
   _registerEnvironmentCommands();
   array_env.registerArrayEnvironments();
@@ -1211,6 +1212,56 @@ void _registerMclass() {
           body: <ParseNode>[supsub],
           isCharacterBox: _isCharacterBox(supsub),
         );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// kern.ts — horizontal spacing commands (\kern, \mkern, \hskip, \mskip)
+// ---------------------------------------------------------------------------
+
+void _registerKern() {
+  defineFunction(
+    <String>[r'\kern', r'\mkern', r'\hskip', r'\mskip'],
+    FunctionSpec(
+      type: 'kern',
+      numArgs: 1,
+      argTypes: const <ArgType?>[ArgType.size],
+      primitive: true,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        final parser = context.parser;
+        final funcName = context.funcName;
+        final size = _assertSize(args[0]);
+        if (parser.settings.strict != false) {
+          // \mkern, \mskip are the "math" variants (second char is 'm').
+          final mathFunction = funcName[1] == 'm';
+          final muUnit = size.value.unit == 'mu';
+          if (mathFunction) {
+            if (!muUnit) {
+              parser.settings.reportNonstrict(
+                'mathVsTextUnits',
+                "LaTeX's $funcName supports only mu units, "
+                'not ${size.value.unit} units',
+              );
+            }
+            if (parser.mode != Mode.math) {
+              parser.settings.reportNonstrict(
+                'mathVsTextUnits',
+                "LaTeX's $funcName works only in math mode",
+              );
+            }
+          } else {
+            if (muUnit) {
+              parser.settings.reportNonstrict(
+                'mathVsTextUnits',
+                "LaTeX's $funcName doesn't support mu units",
+              );
+            }
+          }
+        }
+        return KernNode(mode: parser.mode, dimension: size.value);
       },
     ),
   );

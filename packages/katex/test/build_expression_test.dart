@@ -229,5 +229,67 @@ void main() {
         reason: 'arrows are 400em-wide & sliced like KaTeX',
       );
     });
+
+    // T-031 (RC-D): stretchy accents must sit ABOVE the base, not over it.
+    // KaTeX's stretchy `makeVList` is `[body, accentSvg]` with NO clearance
+    // kern (accent.ts). In a `firstBaseline` vlist the accent SVG (depth 0)
+    // therefore lands with its baseline exactly at `body.height` above the
+    // main baseline — clear of the letters. A regression that re-introduces a
+    // `-clearance` kern pulls the accent down onto the base (the bug); guard
+    // against it by checking the accent's vlist shift.
+    for (final tex in [
+      r'\widehat{xyz}',
+      r'\widetilde{xyz}',
+      r'\overrightarrow{AB}',
+    ]) {
+      test('$tex places the stretchy accent above the base (no overlap)', () {
+        final root = renderToBox(tex);
+        // Find the accent VList: the one whose positions include the stretchy
+        // SvgPathNode (directly, since the stretchy vlist has no inner kern).
+        VList? accentVList;
+        VListPosition? bodyPos;
+        VListPosition? accentPos;
+        for (final v in _flatten(root).whereType<VList>()) {
+          for (final p in v.positions) {
+            if (p.box is SvgPathNode) {
+              accentVList = v;
+              accentPos = p;
+            }
+          }
+          if (accentVList == v) {
+            // The other (elem) position in this vlist is the base body.
+            bodyPos = v.positions.firstWhere((p) => p.box is! SvgPathNode);
+          }
+        }
+        expect(accentVList, isNotNull, reason: 'stretchy accent uses a VList');
+        final body = bodyPos!.box;
+        final accentShift = accentPos!.shift;
+        // Body baseline sits at shift 0; the accent must be RAISED (negative
+        // downward shift) by the full base height, placing its baseline (the
+        // accent has depth 0) at the top of the base — not over it.
+        expect(
+          accentShift,
+          lessThan(bodyPos.shift - 1e-9),
+          reason: 'accent must be raised above the body baseline',
+        );
+        expect(
+          accentShift,
+          closeTo(bodyPos.shift - body.height, 1e-6),
+          reason: 'accent baseline sits exactly at body.height (no clearance '
+              'kern dragging it onto the base)',
+        );
+        // The accent ink occupies [shift - height, shift]; its lowest point
+        // must not dip below the top of the base (shift 0 == base baseline,
+        // base top at -body.height). With shift == -body.height and depth 0,
+        // the accent bottom is exactly at the base top.
+        final accentBottom = accentShift; // depth 0
+        final baseTop = bodyPos.shift - body.height;
+        expect(
+          accentBottom,
+          closeTo(baseTop, 1e-6),
+          reason: 'accent bottom rests at the base top, not inside it',
+        );
+      });
+    }
   });
 }

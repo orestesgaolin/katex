@@ -45,6 +45,8 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-028](T-028-site-flutter-fonts.md) | Site Flutter column wrong font (asset base 404) | M7 | done | T-024 |
 | [T-029](T-029-site-flutter-inline-perrow.md) | Site Flutter column: per-row single-view iframes (glyphs + alignment) | M7 | done | T-024, T-028 |
 | [T-030](T-030-site-flutter-embed.md) | Site Flutter column: jaspr_flutter_embed + boot/sizing fixes | M7 | done | T-029 |
+| [T-031](T-031-render-correctness-batch.md) | Renderer correctness batch (site review: 15 bugs) | M6 | done | T-011, T-022, T-025 |
+| [T-032](T-032-gitignore-build-source.md) | Fix .gitignore ignoring lib/src/build source (never committed!) | M1 | done | — |
 
 ## Side-by-side findings (user review, 2026-06-14)
 Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`

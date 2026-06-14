@@ -63,13 +63,16 @@ void main() {
       expect(texts.first.getAttribute('font-style'), 'italic');
       expect(texts.first.innerText, 'a');
 
-      // viewBox reflects width * fontSize and (height+depth) * fontSize.
-      // Numbers are emitted compactly (integers drop a trailing `.0`).
-      // 0.5 * 44 = 22, 0.7 * 44 = 30.8.
+      // viewBox reflects width * fontSize and (height+depth) * fontSize, plus
+      // a symmetric content-overflow pad (0.08 em) on every side so glyph ink
+      // is not clipped (RC-E). Numbers are emitted compactly.
+      // content: 0.5*44 = 22 wide, 0.7*44 = 30.8 tall.
+      // pad: 0.08*44 = 3.52 per side → +7.04 each dimension.
+      // width = 22 + 7.04 = 29.04, height = 30.8 + 7.04 = 37.84.
       final vb = root.getAttribute('viewBox');
-      expect(vb, '0 0 22 30.8');
-      expect(root.getAttribute('width'), '22');
-      expect(root.getAttribute('height'), '30.8');
+      expect(vb, '0 0 29.04 37.84');
+      expect(root.getAttribute('width'), '29.04');
+      expect(root.getAttribute('height'), '37.84');
     });
 
     test('embeds all 12 fonts as @font-face data-URIs', () {
@@ -96,11 +99,13 @@ void main() {
       final texts = doc.findAllElements('text').toList();
       expect(texts, hasLength(2));
 
-      // The second glyph is wrapped in a translate group at x = 0.5*44 = 22.
+      // The second glyph is wrapped in a translate group at x = 0.5*44 = 22
+      // (relative to the inner content group; the pad is on the outer group).
       expect(svg, contains('translate(22,0)'));
 
-      // Root width is the sum of child widths: (0.5 + 0.6) * 44 = 48.4.
-      expect(doc.rootElement.getAttribute('width'), '48.4');
+      // Root width is the sum of child widths plus the 0.08 em pad each side:
+      // (0.5 + 0.6) * 44 + 2 * 0.08 * 44 = 48.4 + 7.04 = 55.44.
+      expect(doc.rootElement.getAttribute('width'), '55.44');
     });
 
     test('KernNode advances x without emitting a node', () {
@@ -143,9 +148,11 @@ void main() {
       // Two glyphs (numerator + denominator).
       expect(doc.findAllElements('text').toList(), hasLength(2));
 
-      // viewBox height spans the whole vlist (height + depth). The serializer
-      // formats it compactly via the same rounding rule used for the rect.
-      final expectedH = (vlist.height + vlist.depth) * defaultFontSize;
+      // viewBox height spans the whole vlist (height + depth) plus the 0.08 em
+      // content-overflow pad on the top and bottom. The serializer formats it
+      // compactly via the same rounding rule used for the rect.
+      final expectedH = (vlist.height + vlist.depth) * defaultFontSize +
+          2 * 0.08 * defaultFontSize;
       expect(
         doc.rootElement.getAttribute('height'),
         _compact(expectedH),
@@ -191,7 +198,8 @@ void main() {
       final node = glyph('a');
       final svg = serializeBox(node, fontSize: 100);
       final doc = XmlDocument.parse(svg);
-      expect(doc.rootElement.getAttribute('width'), '50'); // 0.5 * 100
+      // content 0.5*100 = 50, plus pad 0.08*100 = 8 each side → 50 + 16 = 66.
+      expect(doc.rootElement.getAttribute('width'), '66');
       expect(
         doc.findAllElements('text').first.getAttribute('font-size'),
         '100',

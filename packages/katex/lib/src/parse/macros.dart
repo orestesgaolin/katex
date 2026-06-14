@@ -44,6 +44,10 @@ abstract class MacroContext {
 
   /// Determine whether [name] is expandable.
   bool isExpandable(String name);
+
+  /// Consume [numArgs] (optionally delimited) arguments and return their token
+  /// lists. Mirrors KaTeX's `consumeArgs`.
+  List<List<Token>> consumeArgs(int numArgs, [List<List<String>>? delimiters]);
 }
 
 /// A fully-resolved macro expansion: macro [tokens] (in reverse order) plus a
@@ -228,6 +232,18 @@ Map<String, MacroDefinition> _defineBuiltinMacros() {
   defineMacro(r'\DOTSI', r'\relax');
   defineMacro(r'\DOTSB', r'\relax');
   defineMacro(r'\DOTSX', r'\relax');
+
+  // LaTeX's \TextOrMath{#1}{#2} expands to #1 in text mode, #2 in math mode.
+  // A function-style macro: it consumes 2 args and pushes back the text or
+  // math one depending on the expander's current mode.
+  defineMacro(r'\TextOrMath', (MacroContext context) {
+    final args = context.consumeArgs(2);
+    if (context.mode == Mode.text) {
+      return MacroExpansion(tokens: args[0], numArgs: 0);
+    } else {
+      return MacroExpansion(tokens: args[1], numArgs: 0);
+    }
+  });
 
   //////////////////////////////////////////////////////////////////////
   // amsmath.sty — spacing
