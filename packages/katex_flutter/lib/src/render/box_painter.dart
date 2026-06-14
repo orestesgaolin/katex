@@ -101,7 +101,106 @@ class KatexBoxPainter extends CustomPainter {
         _paintVList(canvas, node, x, baselineY, currentColor);
       case SvgPathNode():
         _paintSvgPath(canvas, node, x, baselineY, currentColor);
+      case EncloseNode():
+        _paintEnclose(canvas, node, x, baselineY, currentColor);
     }
+  }
+
+  // --- Enclose (frame / fill / strikes) -------------------------------------
+
+  void _paintEnclose(
+    Canvas canvas,
+    EncloseNode node,
+    double x,
+    double baselineY,
+    Color currentColor,
+  ) {
+    // The decorations span the child's box: box-x [x, x+width], box-y
+    // [baselineY-height, baselineY+depth]. y grows downward.
+    final left = x;
+    final right = x + node.width * fontSize;
+    final top = baselineY - node.height * fontSize;
+    final bottom = baselineY + node.depth * fontSize;
+    final hasBox = node.notations.contains(EncloseNotation.box);
+    final hasActuarial = node.notations.contains(EncloseNotation.actuarial);
+
+    // Background fill (behind the child).
+    final bg = _parseColor(node.backgroundColor);
+    if (bg != null) {
+      canvas.drawRect(
+        Rect.fromLTRB(left, top, right, bottom),
+        Paint()
+          ..color = bg
+          ..style = PaintingStyle.fill,
+      );
+    }
+
+    // Full frame (box): stroked rect inset by half the border width.
+    if (hasBox && node.borderWidth != null) {
+      final bw = node.borderWidth! * fontSize;
+      final stroke = _parseColor(node.borderColor) ?? currentColor;
+      canvas.drawRect(
+        Rect.fromLTRB(
+          left + bw / 2,
+          top + bw / 2,
+          right - bw / 2,
+          bottom - bw / 2,
+        ),
+        Paint()
+          ..color = stroke
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = bw,
+      );
+    }
+
+    // Actuarial angle: top border + right border.
+    if (hasActuarial && node.borderWidth != null) {
+      final bw = node.borderWidth! * fontSize;
+      final stroke = _parseColor(node.borderColor) ?? currentColor;
+      final paint = Paint()
+        ..color = stroke
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = bw;
+      canvas
+        ..drawLine(
+          Offset(left, top + bw / 2),
+          Offset(right, top + bw / 2),
+          paint,
+        )
+        ..drawLine(
+          Offset(right - bw / 2, top),
+          Offset(right - bw / 2, bottom),
+          paint,
+        );
+    }
+
+    // Strikes.
+    final strikeColor = _parseColor(node.strikeColor) ?? currentColor;
+    const strokeWEm = 0.046;
+    final strikePaint = Paint()
+      ..color = strikeColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWEm * fontSize;
+    if (node.notations.contains(EncloseNotation.updiagonalstrike)) {
+      canvas.drawLine(Offset(left, bottom), Offset(right, top), strikePaint);
+    }
+    if (node.notations.contains(EncloseNotation.downdiagonalstrike)) {
+      canvas.drawLine(Offset(left, top), Offset(right, bottom), strikePaint);
+    }
+    if (node.notations.contains(EncloseNotation.horizontalstrike)) {
+      final y = baselineY - 0.25 * fontSize;
+      canvas.drawLine(
+        Offset(left, y),
+        Offset(right, y),
+        Paint()
+          ..color = strikeColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.08 * fontSize,
+      );
+    }
+
+    // The content on top.
+    _paintNode(canvas, node.child, x, baselineY, currentColor);
   }
 
   // --- SvgPath (stretchy delimiters / sqrt surd) ----------------------------

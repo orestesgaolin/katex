@@ -261,6 +261,7 @@ void main() {
         RuleNode() => 'rule',
         SpanNode() => 'span',
         SvgPathNode() => 'svg',
+        EncloseNode() => 'enclose',
       };
       expect(label, isNotEmpty);
     }

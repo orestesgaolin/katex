@@ -492,6 +492,102 @@ class RuleNode extends BoxNode {
       'd: ${depth.toStringAsFixed(4)})';
 }
 
+/// A notation drawn by an [EncloseNode] (KaTeX `<menclose>` notations).
+///
+/// Direct port of the notations KaTeX's `enclose.ts` produces:
+///  * [box] — a frame on all four sides (`\fbox`, `\boxed`, `\fcolorbox`).
+///  * [updiagonalstrike] — bottom-left → top-right line (`\cancel`).
+///  * [downdiagonalstrike] — top-left → bottom-right line (`\bcancel`).
+///  * [horizontalstrike] — a strike-through at the x-height (`\sout`).
+///  * [actuarial] — a top + right border (`\angl`).
+///
+/// `\xcancel` carries both [updiagonalstrike] and [downdiagonalstrike].
+enum EncloseNotation {
+  /// A frame on all four sides.
+  box,
+
+  /// A diagonal line from bottom-left to top-right.
+  updiagonalstrike,
+
+  /// A diagonal line from top-left to bottom-right.
+  downdiagonalstrike,
+
+  /// A horizontal strike-through line.
+  horizontalstrike,
+
+  /// A top + right border (actuarial angle).
+  actuarial,
+}
+
+/// A box that draws a background fill, a colored border, and/or strike lines
+/// around/over its [child].
+///
+/// This is the box-tree analogue of KaTeX's `<menclose>` (`enclose.ts`):
+/// `\fbox`, `\boxed`, `\colorbox`, `\fcolorbox`, `\cancel`, `\bcancel`,
+/// `\xcancel`, `\sout`, `\angl`. The [child] is the (already padded) inner box;
+/// its dimensions are the node's dimensions (KaTeX bakes the `\fboxsep` padding
+/// and the cancel vertical padding into the inner box, so the enclose node does
+/// not change them). Both backends (the SVG serializer and the Flutter painter)
+/// draw the decorations relative to the child's box, then paint the child.
+///
+/// Coordinate note: like every other node, the box spans box-y `[-height,
+/// +depth]` (top to bottom) and box-x `[0, width]`. A box/actuarial border
+/// is [borderWidth] em thick (drawn inside the box, like CSS `box-sizing:
+/// border-box`); the strikes run corner-to-corner of the box (the horizontal
+/// strike runs across the x-height line).
+@immutable
+class EncloseNode extends BoxNode {
+  /// Creates an enclose node decorating [child].
+  const EncloseNode({
+    required this.child,
+    required this.notations,
+    this.backgroundColor,
+    this.borderColor,
+    this.borderWidth,
+    this.strikeColor,
+  });
+
+  /// The inner box (already padded by the builder).
+  final BoxNode child;
+
+  /// The decorations to draw (see [EncloseNotation]).
+  final List<EncloseNotation> notations;
+
+  /// CSS color string for the background fill, or `null` for none.
+  final String? backgroundColor;
+
+  /// CSS color string for the [EncloseNotation.box]/[EncloseNotation.actuarial]
+  /// border, or `null` to use the inherited (current) color.
+  final String? borderColor;
+
+  /// Border thickness in em (KaTeX `\fboxrule` / `defaultRuleThickness`), or
+  /// `null` when there is no border.
+  final double? borderWidth;
+
+  /// CSS color string for the strike lines, or `null` to use the inherited
+  /// (current) color. KaTeX draws cancel/sout strikes in the current color.
+  final String? strikeColor;
+
+  @override
+  double get width => child.width;
+
+  @override
+  double get height => child.height;
+
+  @override
+  double get depth => child.depth;
+
+  @override
+  String toString() =>
+      'EncloseNode($notations'
+      '${backgroundColor != null ? ', bg: $backgroundColor' : ''}'
+      '${borderColor != null ? ', border: $borderColor' : ''}'
+      '${borderWidth != null ? ', bw: ${borderWidth!.toStringAsFixed(4)}' : ''}'
+      ', w: ${width.toStringAsFixed(4)}, '
+      'h: ${height.toStringAsFixed(4)}, '
+      'd: ${depth.toStringAsFixed(4)})';
+}
+
 /// A wrapper node carrying presentation metadata (color, classes, sizing).
 ///
 /// Mirrors KaTeX's `Span`: it groups [children] and may apply a [color],

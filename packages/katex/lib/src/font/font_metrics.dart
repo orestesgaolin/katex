@@ -156,6 +156,8 @@ class FontMetrics {
   double get bigOpSpacing4 => _values['bigOpSpacing4']!;
   double get bigOpSpacing5 => _values['bigOpSpacing5']!;
   double get ptPerEm => _values['ptPerEm']!;
+  double get fboxsep => _values['fboxsep']!;
+  double get fboxrule => _values['fboxrule']!;
 }
 
 final Map<int, FontMetrics> _fontMetricsBySizeIndex = {};

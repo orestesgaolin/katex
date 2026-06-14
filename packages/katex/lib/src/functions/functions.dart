@@ -6,6 +6,7 @@ library;
 import 'package:katex/src/ast/parse_node.dart';
 import 'package:katex/src/environments/array.dart' as array_env;
 import 'package:katex/src/environments/environment_spec.dart';
+import 'package:katex/src/functions/enclose.dart' as enclose_fn;
 import 'package:katex/src/functions/function_spec.dart';
 import 'package:katex/src/functions/macro_functions.dart';
 import 'package:katex/src/parse/macro_expander.dart';
@@ -58,6 +59,8 @@ void ensureRegistered() {
   _registerPmb();
   _registerHbox();
   _registerRule();
+  _registerMath();
+  enclose_fn.registerEnclose();
   array_env.registerArrayEnvironments();
   ensureMacrosRegistered();
 }
@@ -2185,6 +2188,58 @@ void _registerRule() {
           height: height.value,
           shift: shift == null ? null : _assertSize(shift).value,
         );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// math.ts — `$`/`\(` switch text mode back to math; `\)`/`\]` guard mismatches.
+// Needed by `\boxed` (its macro body is `\fbox{$\displaystyle{#1}$}`) and any
+// `$...$` nested inside a text-mode group (`\text`, `\hbox`, `\fbox`, …).
+// ---------------------------------------------------------------------------
+
+void _registerMath() {
+  // Switching from text mode back to math mode.
+  defineFunction(
+    <String>[r'\(', r'$'],
+    FunctionSpec(
+      type: 'styling',
+      numArgs: 0,
+      allowedInText: true,
+      allowedInMath: false,
+      handler: (context, args, optArgs) {
+        final parser = context.parser;
+        final outerMode = parser.mode;
+        parser.switchMode(Mode.math);
+        final close = context.funcName == r'\(' ? r'\)' : r'$';
+        final body = parser.parseExpression(
+          breakOnInfix: false,
+          breakOnTokenText: close,
+        );
+        parser
+          ..expect(close)
+          ..switchMode(outerMode);
+        return StylingNode(
+          mode: parser.mode,
+          style: StyleStr.text,
+          resetFont: true,
+          body: body,
+        );
+      },
+    ),
+  );
+
+  // Check for extra closing math delimiters.
+  defineFunction(
+    <String>[r'\)', r'\]'],
+    FunctionSpec(
+      type: 'text',
+      numArgs: 0,
+      allowedInText: true,
+      allowedInMath: false,
+      handler: (context, args, optArgs) {
+        throw ParseError('Mismatched ${context.funcName}');
       },
     ),
   );

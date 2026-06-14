@@ -10,6 +10,7 @@ import 'package:katex/src/build/build_expression.dart' show GroupBuilder;
 import 'package:katex/src/build/builders/accent_builders.dart';
 import 'package:katex/src/build/builders/array_builder.dart';
 import 'package:katex/src/build/builders/delimiter_builders.dart';
+import 'package:katex/src/build/builders/enclose_builder.dart';
 import 'package:katex/src/build/builders/extra_builders.dart';
 import 'package:katex/src/build/builders/genfrac_builder.dart';
 import 'package:katex/src/build/builders/op_builders.dart';
@@ -30,4 +31,5 @@ void registerAll(Map<String, GroupBuilder> registry) {
   registerStylingBuilders(registry);
   registerArrayBuilder(registry);
   registerExtraBuilders(registry);
+  registerEncloseBuilder(registry);
 }

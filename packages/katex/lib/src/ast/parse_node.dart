@@ -1239,6 +1239,38 @@ final class HboxNode extends ParseNode {
   String get type => 'hbox';
 }
 
+/// `enclose` — `\fbox`, `\boxed`, `\colorbox`, `\fcolorbox`, `\cancel`,
+/// `\bcancel`, `\xcancel`, `\sout`, `\angl`. Mirrors KaTeX's `enclose` parse
+/// node. [label] is the command name (e.g. `\cancel`);
+/// [backgroundColor]/[borderColor] are CSS color strings supplied by the
+/// `\colorbox`/`\fcolorbox` color arguments (else `null`).
+final class EncloseParseNode extends ParseNode {
+  /// Creates an enclose node.
+  const EncloseParseNode({
+    required super.mode,
+    required this.label,
+    required this.body,
+    super.loc,
+    this.backgroundColor,
+    this.borderColor,
+  });
+
+  /// The command name (e.g. `\fbox`, `\cancel`, `\colorbox`).
+  final String label;
+
+  /// The enclosed expression.
+  final ParseNode body;
+
+  /// The background fill color (CSS string), or `null`.
+  final String? backgroundColor;
+
+  /// The border color (CSS string), or `null`.
+  final String? borderColor;
+
+  @override
+  String get type => 'enclose';
+}
+
 /// `verb` — `\verb|...|` literal monospace text. Mirrors KaTeX `VerbNode`.
 final class VerbNode extends ParseNode {
   /// Creates a verb node.

@@ -48,6 +48,8 @@ List<BoxNode> _flatten(BoxNode node) {
       for (final p in positions) {
         out.addAll(_flatten(p.box));
       }
+    case EncloseNode(:final child):
+      out.addAll(_flatten(child));
     case GlyphNode():
     case KernNode():
     case RuleNode():

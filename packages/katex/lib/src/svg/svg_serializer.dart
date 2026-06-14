@@ -151,7 +151,97 @@ class _SvgSerializer {
         _writeVList(node);
       case SvgPathNode():
         _writeSvgPath(node);
+      case EncloseNode():
+        _writeEnclose(node);
     }
+  }
+
+  // --- Enclose (frame / fill / strikes) -------------------------------------
+
+  void _writeEnclose(EncloseNode node) {
+    // The decorations span the child's box: box-x [0, width], box-y
+    // [-height, +depth] (top to bottom). y grows downward in SVG.
+    final w = node.width * fontSize;
+    final top = -node.height * fontSize;
+    final h = (node.height + node.depth) * fontSize;
+    final hasBox = node.notations.contains(EncloseNotation.box);
+    final hasActuarial = node.notations.contains(EncloseNotation.actuarial);
+
+    // Background fill (drawn behind the child). KaTeX paints the fill, then the
+    // border, then the content on top.
+    if (node.backgroundColor != null && node.backgroundColor!.isNotEmpty) {
+      _buf
+        ..write('<rect x="0" y="${_num(top)}" ')
+        ..write('width="${_num(w)}" height="${_num(h)}" ')
+        ..write('fill="${_escapeAttr(node.backgroundColor!)}"/>');
+    }
+
+    // Full frame (box). Drawn as a stroked rect inset by half the border width
+    // so the stroke sits inside the box (CSS border-box semantics).
+    if (hasBox && node.borderWidth != null) {
+      final bw = node.borderWidth! * fontSize;
+      final stroke = node.borderColor;
+      _buf
+        ..write('<rect ')
+        ..write('x="${_num(bw / 2)}" y="${_num(top + bw / 2)}" ')
+        ..write('width="${_num(w - bw)}" height="${_num(h - bw)}" ')
+        ..write('fill="none" ');
+      if (stroke != null && stroke.isNotEmpty) {
+        _buf.write('stroke="${_escapeAttr(stroke)}" ');
+      } else {
+        _buf.write('stroke="currentColor" ');
+      }
+      _buf.write('stroke-width="${_num(bw)}"/>');
+    }
+
+    // Actuarial angle: a top border + a right border.
+    if (hasActuarial && node.borderWidth != null) {
+      final bw = node.borderWidth! * fontSize;
+      final stroke = (node.borderColor != null && node.borderColor!.isNotEmpty)
+          ? _escapeAttr(node.borderColor!)
+          : 'currentColor';
+      // Top edge.
+      _line(0, top + bw / 2, w, top + bw / 2, bw, stroke);
+      // Right edge.
+      _line(w - bw / 2, top, w - bw / 2, top + h, bw, stroke);
+    }
+
+    // Strikes.
+    final strike = (node.strikeColor != null && node.strikeColor!.isNotEmpty)
+        ? _escapeAttr(node.strikeColor!)
+        : 'currentColor';
+    const strokeW = 0.046; // em (KaTeX cancel stroke-width).
+    final sw = strokeW * fontSize;
+    if (node.notations.contains(EncloseNotation.updiagonalstrike)) {
+      // bottom-left → top-right.
+      _line(0, top + h, w, top, sw, strike);
+    }
+    if (node.notations.contains(EncloseNotation.downdiagonalstrike)) {
+      // top-left → bottom-right.
+      _line(0, top, w, top + h, sw, strike);
+    }
+    if (node.notations.contains(EncloseNotation.horizontalstrike)) {
+      // \sout: a line across the x-height (~0.5 xHeight above the baseline).
+      final y = -0.25 * fontSize;
+      _line(0, y, w, y, 0.08 * fontSize, strike);
+    }
+
+    // The content on top.
+    _writeNode(node.child);
+  }
+
+  void _line(
+    double x1,
+    double y1,
+    double x2,
+    double y2,
+    double strokeWidth,
+    String stroke,
+  ) {
+    _buf
+      ..write('<line x1="${_num(x1)}" y1="${_num(y1)}" ')
+      ..write('x2="${_num(x2)}" y2="${_num(y2)}" ')
+      ..write('stroke="$stroke" stroke-width="${_num(strokeWidth)}"/>');
   }
 
   // --- Glyph ----------------------------------------------------------------
