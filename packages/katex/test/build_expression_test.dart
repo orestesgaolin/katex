@@ -54,6 +54,7 @@ List<BoxNode> _flatten(BoxNode node) {
     case KernNode():
     case RuleNode():
     case SvgPathNode():
+    case ImageNode():
       break;
   }
   return out;

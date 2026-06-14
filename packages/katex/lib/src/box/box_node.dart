@@ -500,6 +500,8 @@ class RuleNode extends BoxNode {
 ///  * [downdiagonalstrike] — top-left → bottom-right line (`\bcancel`).
 ///  * [horizontalstrike] — a strike-through at the x-height (`\sout`).
 ///  * [actuarial] — a top + right border (`\angl`).
+///  * [phase] — a Steinmetz phasor angle (`\phase`): a diagonal `\` stroke down
+///    the left side joined to a horizontal `_` stroke along the bottom.
 ///
 /// `\xcancel` carries both [updiagonalstrike] and [downdiagonalstrike].
 enum EncloseNotation {
@@ -517,6 +519,10 @@ enum EncloseNotation {
 
   /// A top + right border (actuarial angle).
   actuarial,
+
+  /// A Steinmetz phasor angle (`\phase`): a diagonal stroke joined to a
+  /// horizontal stroke along the bottom, drawn at the box's lower-left.
+  phase,
 }
 
 /// A box that draws a background fill, a colored border, and/or strike lines
@@ -545,6 +551,7 @@ class EncloseNode extends BoxNode {
     this.borderColor,
     this.borderWidth,
     this.strikeColor,
+    this.phaseLineWidth,
   });
 
   /// The inner box (already padded by the builder).
@@ -568,6 +575,10 @@ class EncloseNode extends BoxNode {
   /// (current) color. KaTeX draws cancel/sout strikes in the current color.
   final String? strikeColor;
 
+  /// Stroke width (em) of the [EncloseNotation.phase] angle, or `null` when
+  /// there is no phase angle. KaTeX's Steinmetz angle is drawn at `0.6pt`.
+  final double? phaseLineWidth;
+
   @override
   double get width => child.width;
 
@@ -584,6 +595,47 @@ class EncloseNode extends BoxNode {
       '${borderColor != null ? ', border: $borderColor' : ''}'
       '${borderWidth != null ? ', bw: ${borderWidth!.toStringAsFixed(4)}' : ''}'
       ', w: ${width.toStringAsFixed(4)}, '
+      'h: ${height.toStringAsFixed(4)}, '
+      'd: ${depth.toStringAsFixed(4)})';
+}
+
+/// An external raster/vector image (`\includegraphics`).
+///
+/// Mirrors KaTeX's `Img` DOM node. Carries the resolved [src] URL, [alt] text,
+/// and a placed box size in **em** ([width]/[height]/[depth]). The SVG
+/// serializer emits an `<image>` of that size pointing at [src]; the Flutter
+/// painter draws a placeholder outline of the same dimensions (real async image
+/// loading is out of scope — see [ImageNode] usage in the painter).
+@immutable
+class ImageNode extends BoxNode {
+  /// Creates an image node sized [width] × ([height] + [depth]) em.
+  const ImageNode({
+    required this.src,
+    required this.alt,
+    required this.width,
+    required this.height,
+    this.depth = 0,
+  });
+
+  /// The image source URL/path (emitted as the `<image>` href).
+  final String src;
+
+  /// The alternative text.
+  final String alt;
+
+  @override
+  final double width;
+
+  @override
+  final double height;
+
+  @override
+  final double depth;
+
+  @override
+  String toString() =>
+      'ImageNode($src, '
+      'w: ${width.toStringAsFixed(4)}, '
       'h: ${height.toStringAsFixed(4)}, '
       'd: ${depth.toStringAsFixed(4)})';
 }

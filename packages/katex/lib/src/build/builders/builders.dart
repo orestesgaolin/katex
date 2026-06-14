@@ -9,10 +9,12 @@ library;
 import 'package:katex/src/build/build_expression.dart' show GroupBuilder;
 import 'package:katex/src/build/builders/accent_builders.dart';
 import 'package:katex/src/build/builders/array_builder.dart';
+import 'package:katex/src/build/builders/cr_builder.dart';
 import 'package:katex/src/build/builders/delimiter_builders.dart';
 import 'package:katex/src/build/builders/enclose_builder.dart';
 import 'package:katex/src/build/builders/extra_builders.dart';
 import 'package:katex/src/build/builders/genfrac_builder.dart';
+import 'package:katex/src/build/builders/includegraphics_builder.dart';
 import 'package:katex/src/build/builders/op_builders.dart';
 import 'package:katex/src/build/builders/sqrt_builder.dart';
 import 'package:katex/src/build/builders/styling_builders.dart';
@@ -32,4 +34,6 @@ void registerAll(Map<String, GroupBuilder> registry) {
   registerArrayBuilder(registry);
   registerExtraBuilders(registry);
   registerEncloseBuilder(registry);
+  registerIncludegraphicsBuilder(registry);
+  registerCrBuilder(registry);
 }

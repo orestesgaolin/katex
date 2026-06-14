@@ -1271,6 +1271,39 @@ final class EncloseParseNode extends ParseNode {
   String get type => 'enclose';
 }
 
+/// `includegraphics` — `\includegraphics[opts]{path}`. Mirrors KaTeX
+/// `IncludegraphicsNode`. Sizes are [Measurement]s resolved at build time.
+final class IncludegraphicsParseNode extends ParseNode {
+  /// Creates an includegraphics node.
+  const IncludegraphicsParseNode({
+    required super.mode,
+    required this.alt,
+    required this.width,
+    required this.height,
+    required this.totalheight,
+    required this.src,
+    super.loc,
+  });
+
+  /// The alt text (defaults to the file name with no extension).
+  final String alt;
+
+  /// The requested width (`{number: 0, unit: "em"}` means "natural").
+  final Measurement width;
+
+  /// The requested height (default `0.9em`, sorta character sized).
+  final Measurement height;
+
+  /// The requested total height (height + depth); `0` means "no depth".
+  final Measurement totalheight;
+
+  /// The image source URL/path.
+  final String src;
+
+  @override
+  String get type => 'includegraphics';
+}
+
 /// `verb` — `\verb|...|` literal monospace text. Mirrors KaTeX `VerbNode`.
 final class VerbNode extends ParseNode {
   /// Creates a verb node.

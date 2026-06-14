@@ -6,8 +6,10 @@ library;
 import 'package:katex/src/ast/parse_node.dart';
 import 'package:katex/src/environments/array.dart' as array_env;
 import 'package:katex/src/environments/environment_spec.dart';
+import 'package:katex/src/functions/cr.dart' as cr_fn;
 import 'package:katex/src/functions/enclose.dart' as enclose_fn;
 import 'package:katex/src/functions/function_spec.dart';
+import 'package:katex/src/functions/includegraphics.dart' as includegraphics_fn;
 import 'package:katex/src/functions/macro_functions.dart';
 import 'package:katex/src/parse/macro_expander.dart';
 import 'package:katex/src/parse/macros.dart' show MacroExpansion;
@@ -61,6 +63,8 @@ void ensureRegistered() {
   _registerRule();
   _registerMath();
   enclose_fn.registerEnclose();
+  includegraphics_fn.registerIncludegraphics();
+  cr_fn.registerCr();
   array_env.registerArrayEnvironments();
   ensureMacrosRegistered();
 }

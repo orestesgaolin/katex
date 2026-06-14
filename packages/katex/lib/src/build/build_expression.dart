@@ -19,6 +19,7 @@ import 'package:katex/src/ast/parse_node.dart' hide KernNode, RuleNode;
 import 'package:katex/src/box/box_node.dart';
 import 'package:katex/src/build/build_common.dart';
 import 'package:katex/src/build/builders/builders.dart' as builders;
+import 'package:katex/src/build/builders/units.dart' show calculateSize;
 import 'package:katex/src/build/options.dart';
 import 'package:katex/src/build/style.dart';
 import 'package:katex/src/parse/parse_error.dart';
@@ -246,14 +247,90 @@ List<BoxNode> buildExpression(
 /// Builds the whole parse [tree] into a single root [BoxNode], mirroring
 /// KaTeX's `buildHTML` (the box-producing parts; the line-breaking strut/tag
 /// machinery is a DOM detail and is collapsed into one horizontal grouping).
+///
+/// Top-level `\\` / `\cr` / `\newline` line breaks (`cr` parse nodes with
+/// `newLine`) split the expression into lines that are stacked left-aligned in
+/// a [VList]. An expression with NO such break is built exactly as a single
+/// `katex-html` span (byte-for-byte unchanged), so single-line layout — and the
+/// oracle dimension gate — is unaffected.
 BoxNode buildHTML(List<ParseNode> tree, Options options) {
-  final expression = buildExpression(
-    tree,
-    options,
-    isRealGroup: true,
-    isRoot: true,
+  // Fast path: no top-level line break. Identical to the original buildHTML.
+  if (!_hasTopLevelNewLine(tree)) {
+    final expression = buildExpression(
+      tree,
+      options,
+      isRealGroup: true,
+      isRoot: true,
+    );
+    return makeSpan(
+      expression,
+      classes: const ['katex-html'],
+      options: options,
+    );
+  }
+  return _buildHTMLWithLineBreaks(tree, options);
+}
+
+// Whether [tree] contains a top-level `cr` node that produces a line break.
+bool _hasTopLevelNewLine(List<ParseNode> tree) {
+  for (final node in tree) {
+    if (node is CrNode && node.newLine) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Splits [tree] on top-level `cr` line breaks and stacks each line, left
+// aligned, in a VList. Port of the layout KaTeX gets from CSS
+// `.newline { display: block }`: each line sits on its own baseline, separated
+// by the line's depth + next line's height plus the optional `\\[size]` skip.
+BoxNode _buildHTMLWithLineBreaks(List<ParseNode> tree, Options options) {
+  // Split into segments, recording the extra skip carried by each break.
+  final segments = <List<ParseNode>>[<ParseNode>[]];
+  final extraSkips = <double>[]; // skip BELOW segment i (from the break after).
+  for (final node in tree) {
+    if (node is CrNode && node.newLine) {
+      final size = node.size;
+      extraSkips.add(size == null ? 0 : calculateSize(size, options));
+      segments.add(<ParseNode>[]);
+    } else {
+      segments.last.add(node);
+    }
+  }
+
+  // Build each line as a left-aligned span.
+  final lines = <BoxNode>[];
+  for (final segment in segments) {
+    final expression = buildExpression(
+      segment,
+      options,
+      isRealGroup: true,
+      isRoot: true,
+    );
+    lines.add(
+      makeSpan(expression, classes: const ['katex-html'], options: options),
+    );
+  }
+
+  // Stack the lines in a VList. The first line keeps its own baseline; each
+  // subsequent line's baseline is shifted down by (prevDepth + thisHeight) plus
+  // the break's optional skip — the box-tree analogue of CSS block flow.
+  final children = <VListChild>[VListChild.elem(lines.first)];
+  var shift = 0.0;
+  for (var i = 1; i < lines.length; i++) {
+    final prev = lines[i - 1];
+    final line = lines[i];
+    final extra = (i - 1) < extraSkips.length ? extraSkips[i - 1] : 0.0;
+    shift += prev.depth + line.height + extra;
+    children.add(VListChild.elem(line, shift: shift));
+  }
+
+  final vlist = makeVList(
+    positionType: VListPositionType.individualShift,
+    children: children,
   );
-  return makeSpan(expression, classes: const ['katex-html'], options: options);
+  return makeSpan([vlist], classes: const ['katex-html'], options: options);
 }
 
 // ---------------------------------------------------------------------------

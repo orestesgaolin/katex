@@ -1,7 +1,7 @@
 /// Builder for the `enclose` group, porting the BOX-PRODUCING `htmlBuilder` of
 /// `reference/node_modules/katex/src/functions/enclose.ts` (KaTeX 0.17.0):
 /// `\fbox`, `\boxed`, `\colorbox`, `\fcolorbox`, `\cancel`, `\bcancel`,
-/// `\xcancel`, `\sout`, `\angl`.
+/// `\xcancel`, `\sout`, `\angl`, `\phase`.
 ///
 /// KaTeX renders these by padding the inner box (`\fboxsep` horizontally +
 /// vertically for boxes, `0.2em` for cancel, `0.03889em`/`4×ruleThickness` for
@@ -9,7 +9,12 @@
 /// the geometry into one [EncloseNode]: its child is the padded inner box (so
 /// the node's height/depth/width already include the padding, like KaTeX's
 /// vlist), and the node carries the notations + colors the two backends draw.
-/// `\phase` is intentionally not ported (out of scope).
+///
+/// `\phase` (the Steinmetz phasor angle) reserves a left pad of
+/// `angleHeight / 2 + lineWeight` (KaTeX `enclose.ts`, `notation === "phase"`)
+/// and draws an angle (`\` + `_`) at the box's lower-left via
+/// [EncloseNotation.phase]; the backends draw it geometrically (matching the
+/// shape KaTeX's `phasePath` SVG produces).
 library;
 
 import 'package:katex/src/ast/parse_node.dart' as ast;
@@ -17,6 +22,7 @@ import 'package:katex/src/box/box_node.dart';
 import 'package:katex/src/build/build_common.dart';
 import 'package:katex/src/build/build_expression.dart';
 import 'package:katex/src/build/builders/supsub_builder.dart' show isCharacterBox;
+import 'package:katex/src/build/builders/units.dart' show calculateSize;
 import 'package:katex/src/build/options.dart';
 
 /// Registers the enclose builder into [registry].
@@ -25,20 +31,22 @@ void registerEncloseBuilder(Map<String, GroupBuilder> registry) {
       _buildEnclose(node as ast.EncloseParseNode, options);
 }
 
-// Wraps [inner] with [hpad] em of horizontal padding on each side and [topPad]/
-// [bottomPad] em of vertical padding (so the result's height/depth/width grow by
-// the pads). Mirrors KaTeX's `boxpad`/`cancel-pad`/`anglpad` CSS padding plus
-// `stretchyEnclose`'s topPad/bottomPad, which together set the inner box's
-// extent before the frame/strike is overlaid.
+// Wraps [inner] with [leftPad]/[rightPad] em of horizontal padding and
+// [topPad]/[bottomPad] em of vertical padding (so the result's
+// height/depth/width grow by the pads). Mirrors KaTeX's
+// `boxpad`/`cancel-pad`/`anglpad` CSS padding plus `stretchyEnclose`'s
+// topPad/bottomPad, which together set the inner box's extent before the
+// frame/strike is overlaid. `\phase` pads only the left (`paddingLeft`).
 BoxNode _pad(
   BoxNode inner,
-  double hpad,
+  double leftPad,
+  double rightPad,
   double topPad,
   double bottomPad,
 ) {
-  final horizontal = hpad == 0
+  final horizontal = (leftPad == 0 && rightPad == 0)
       ? inner
-      : HBox(<BoxNode>[KernNode(hpad), inner, KernNode(hpad)]);
+      : HBox(<BoxNode>[KernNode(leftPad), inner, KernNode(rightPad)]);
   if (topPad == 0 && bottomPad == 0) {
     return horizontal;
   }
@@ -66,6 +74,13 @@ BoxNode _buildEnclose(ast.EncloseParseNode group, Options options) {
   final label = group.label.substring(1); // strip the leading backslash
   final isSingleChar = isCharacterBox(group.body);
   final metrics = options.fontMetrics();
+
+  // \phase — the Steinmetz phasor angle (KaTeX enclose.ts, `notation ===
+  // "phase"`). It pads the body left by `angleHeight/2 + lineWeight`, reserves
+  // `angleHeight` of vertical extent below the baseline, then draws an angle.
+  if (label == 'phase') {
+    return _buildPhase(inner, options);
+  }
 
   // Horizontal padding (KaTeX: boxpad / cancel-pad / anglpad).
   final double hpad;
@@ -99,7 +114,7 @@ BoxNode _buildEnclose(ast.EncloseParseNode group, Options options) {
     bottomPad = topPad;
   }
 
-  final child = _pad(inner, hpad, topPad, bottomPad);
+  final child = _pad(inner, hpad, hpad, topPad, bottomPad);
 
   // Notations + colors per command.
   final notations = <EncloseNotation>[];
@@ -150,6 +165,45 @@ BoxNode _buildEnclose(ast.EncloseParseNode group, Options options) {
     borderColor: borderColor,
     borderWidth: borderWidth,
     strikeColor: strikeColor,
+  );
+
+  return withAtomClass(makeSpan(<BoxNode>[enclose]), 'mord', options: options);
+}
+
+// \phase — port of enclose.ts `notation === "phase"`. KaTeX reserves a left pad
+// (so the angle has room), grows the body's depth so the angle clears the body,
+// and draws a Steinmetz angle (`\` joined to `_`) at the lower-left.
+BoxNode _buildPhase(BoxNode inner, Options options) {
+  // Steinmetz dimensions (KaTeX): line weight 0.6pt, clearance 0.35ex.
+  final lineWeight = calculateSize(const ast.Measurement(0.6, 'pt'), options);
+  final clearance = calculateSize(const ast.Measurement(0.35, 'ex'), options);
+
+  // The angle reaches from the top of the body down to below its depth, with a
+  // clearance gap. `imgShift` is how far the angle's baseline sits below the
+  // body's baseline (KaTeX: inner.depth + lineWeight + clearance).
+  final angleHeight = inner.height + inner.depth + lineWeight + clearance;
+  final leftPad = angleHeight / 2 + lineWeight;
+  final imgShift = inner.depth + lineWeight + clearance;
+
+  // Pad the body on the left only (KaTeX: inner.style.paddingLeft), and grow
+  // the depth so the angle fits below the body. A zero-width strut at the new
+  // bottom extends the depth without moving the baseline.
+  final padded = HBox(<BoxNode>[
+    KernNode(leftPad),
+    makeVList(
+      positionType: VListPositionType.individualShift,
+      children: <VListChild>[
+        VListChild.elem(inner),
+        VListChild.elem(RuleNode(width: 0, height: 0, depth: imgShift)),
+      ],
+    ),
+  ]);
+
+  final enclose = EncloseNode(
+    child: padded,
+    notations: const <EncloseNotation>[EncloseNotation.phase],
+    strikeColor: options.getColor(),
+    phaseLineWidth: lineWeight,
   );
 
   return withAtomClass(makeSpan(<BoxNode>[enclose]), 'mord', options: options);

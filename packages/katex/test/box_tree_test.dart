@@ -262,6 +262,7 @@ void main() {
         SpanNode() => 'span',
         SvgPathNode() => 'svg',
         EncloseNode() => 'enclose',
+        ImageNode() => 'image',
       };
       expect(label, isNotEmpty);
     }

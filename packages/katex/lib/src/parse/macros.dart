@@ -286,6 +286,9 @@ Map<String, MacroDefinition> _defineBuiltinMacros() {
   defineMacro(r'\quad', r'\hskip1em\relax');
   defineMacro(r'\qquad', r'\hskip2em\relax');
 
+  // \DeclareRobustCommand\newline{\@normalcr\relax} — KaTeX macros.ts.
+  defineMacro(r'\newline', r'\\\relax');
+
   //////////////////////////////////////////////////////////////////////
   // amsopn.sty — \bmod and friends
 

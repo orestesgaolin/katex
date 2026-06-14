@@ -5,8 +5,8 @@
 ///
 /// `\boxed` and `\angln` are macros (registered in `parse/macros.dart`, not
 /// touched here) expanding to `\fbox{$\displaystyle{...}$}` and `{\angl n}`,
-/// so they route through these handlers. `\phase` (also in `enclose.ts`) needs
-/// a Steinmetz SVG path and is intentionally not ported (out of scope).
+/// so they route through these handlers. `\phase` (also in `enclose.ts`) draws
+/// a Steinmetz phasor angle; its geometry lives in the builder.
 ///
 /// The box-producing builder lives in `build/builders/enclose_builder.dart`.
 library;
@@ -85,9 +85,9 @@ void registerEnclose() {
     ),
   );
 
-  // \cancel \bcancel \xcancel — strike-through(s). (\phase omitted.)
+  // \cancel \bcancel \xcancel \phase — strike-through(s) + the phasor angle.
   defineFunction(
-    <String>[r'\cancel', r'\bcancel', r'\xcancel'],
+    <String>[r'\cancel', r'\bcancel', r'\xcancel', r'\phase'],
     FunctionSpec(
       type: 'enclose',
       numArgs: 1,

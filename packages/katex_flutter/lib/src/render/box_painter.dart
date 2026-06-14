@@ -103,7 +103,42 @@ class KatexBoxPainter extends CustomPainter {
         _paintSvgPath(canvas, node, x, baselineY, currentColor);
       case EncloseNode():
         _paintEnclose(canvas, node, x, baselineY, currentColor);
+      case ImageNode():
+        _paintImage(canvas, node, x, baselineY, currentColor);
     }
+  }
+
+  // --- Image (\includegraphics) ---------------------------------------------
+
+  // Real async bitmap loading is OUT OF SCOPE for this backend: the box tree is
+  // painted synchronously and has no image cache, so we cannot fetch the URL
+  // here. Instead we reserve the correct space (the [ImageNode] already carries
+  // the resolved em dimensions) and draw a thin placeholder outline so the
+  // layout is faithful. A future ticket can add an async ImageProvider cache.
+  void _paintImage(
+    Canvas canvas,
+    ImageNode node,
+    double x,
+    double baselineY,
+    Color currentColor,
+  ) {
+    final left = x;
+    // A natural-width image (width == 0) has no reserved horizontal advance in
+    // the box tree; draw the placeholder at its (height) square so it is still
+    // visible. KaTeX leaves such an image to its intrinsic bitmap width.
+    final boxH = (node.height + node.depth) * fontSize;
+    final w = node.width > 0 ? node.width * fontSize : boxH;
+    final top = baselineY - node.height * fontSize;
+    if (w <= 0 || boxH <= 0) {
+      return;
+    }
+    canvas.drawRect(
+      Rect.fromLTWH(left, top, w, boxH),
+      Paint()
+        ..color = currentColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
   }
 
   // --- Enclose (frame / fill / strikes) -------------------------------------
@@ -197,6 +232,30 @@ class KatexBoxPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.08 * fontSize,
       );
+    }
+
+    // \phase: the Steinmetz angle — a diagonal stroke down to the bottom-left
+    // corner joined to a horizontal stroke along the bottom (mirrors the SVG
+    // serializer and the shape KaTeX's `phasePath` SVG produces).
+    if (node.notations.contains(EncloseNotation.phase) &&
+        node.phaseLineWidth != null) {
+      final lw = node.phaseLineWidth! * fontSize;
+      final h = (node.height + node.depth) * fontSize;
+      final phasePaint = Paint()
+        ..color = strikeColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = lw;
+      canvas
+        ..drawLine(
+          Offset(left + h / 2, top + lw / 2),
+          Offset(left + lw / 2, bottom - lw / 2),
+          phasePaint,
+        )
+        ..drawLine(
+          Offset(left, bottom - lw / 2),
+          Offset(right, bottom - lw / 2),
+          phasePaint,
+        );
     }
 
     // The content on top.

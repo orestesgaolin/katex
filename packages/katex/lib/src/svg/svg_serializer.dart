@@ -111,6 +111,7 @@ class _SvgSerializer {
 
     _buf
       ..write('<svg xmlns="http://www.w3.org/2000/svg" ')
+      ..write('xmlns:xlink="http://www.w3.org/1999/xlink" ')
       ..write('width="${_num(svgWidth)}" height="${_num(svgHeight)}" ')
       ..write('viewBox="0 0 ${_num(svgWidth)} ${_num(svgHeight)}">');
 
@@ -153,7 +154,32 @@ class _SvgSerializer {
         _writeSvgPath(node);
       case EncloseNode():
         _writeEnclose(node);
+      case ImageNode():
+        _writeImage(node);
     }
+  }
+
+  // --- Image (\includegraphics) ---------------------------------------------
+
+  void _writeImage(ImageNode node) {
+    // The image's box spans box-y [-height, +depth] (top to bottom) and box-x
+    // [0, width]; y grows downward in SVG. A natural-width image (width == 0,
+    // KaTeX's "no width given") gets no explicit width attribute so the browser
+    // uses the bitmap's intrinsic aspect ratio at the requested height.
+    final h = (node.height + node.depth) * fontSize;
+    final y = -node.height * fontSize;
+    _buf
+      ..write('<image x="0" y="${_num(y)}" ')
+      ..write('height="${_num(h)}" ');
+    if (node.width > 0) {
+      _buf.write('width="${_num(node.width * fontSize)}" ');
+    }
+    _buf
+      ..write('preserveAspectRatio="none" ')
+      ..write('xlink:href="${_escapeAttr(node.src)}" ')
+      ..write('href="${_escapeAttr(node.src)}"')
+      ..write(node.alt.isEmpty ? '' : ' aria-label="${_escapeAttr(node.alt)}"')
+      ..write('/>');
   }
 
   // --- Enclose (frame / fill / strikes) -------------------------------------
@@ -224,6 +250,18 @@ class _SvgSerializer {
       // \sout: a line across the x-height (~0.5 xHeight above the baseline).
       final y = -0.25 * fontSize;
       _line(0, y, w, y, 0.08 * fontSize, strike);
+    }
+
+    // \phase: the Steinmetz angle — a diagonal stroke from the top down to the
+    // bottom-left corner joined to a horizontal stroke along the bottom. KaTeX
+    // draws this as the filled `phasePath` SVG; geometrically it is this angle.
+    if (node.notations.contains(EncloseNotation.phase) &&
+        node.phaseLineWidth != null) {
+      final lw = node.phaseLineWidth! * fontSize;
+      // Apex near the top-left; diagonal down to the bottom-left corner.
+      _line(h / 2, top + lw / 2, lw / 2, top + h - lw / 2, lw, strike);
+      // Horizontal stroke along the bottom.
+      _line(0, top + h - lw / 2, w, top + h - lw / 2, lw, strike);
     }
 
     // The content on top.
