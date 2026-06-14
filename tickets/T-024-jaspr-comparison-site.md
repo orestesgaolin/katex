@@ -1,6 +1,6 @@
 # T-024 — Jaspr comparison site: KaTeX JS vs KaTeX Dart, side by side
 
-**Milestone:** M7 (demo/docs site)  **Status:** todo  **Depends on:** T-012, T-017, T-002
+**Milestone:** M7 (demo/docs site)  **Status:** review  **Depends on:** T-012, T-017, T-002
 
 ## Goal
 A new **static [Jaspr](https://jaspr.site) site** that renders, **side by side for each

@@ -1,0 +1,37 @@
+# Files and directories created by pub.
+**/doc/api/
+.dart_tool/
+.packages
+
+# Conventional directory for build output.
+/build/
+
+# Generated Flutter-web output for the katex_flutter column.
+# Regenerate with: cd flutter_host && flutter build web --base-href /flutter/
+#   then: cp -r flutter_host/build/web web/flutter   (see README.md).
+/web/flutter/
+/flutter_host/build/
+/flutter_host/.dart_tool/
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/

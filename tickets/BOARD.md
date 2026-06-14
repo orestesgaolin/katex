@@ -38,7 +38,7 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-021](T-021-flutter-golden-fonts.md) | Flutter golden harness renders real glyphs | M5 | done | T-018 |
 | [T-022](T-022-stretchy-geometry.md) | Real stretchy delimiters + surd (SvgPathNode geometry) | M6 | done | T-011, T-012, T-016 |
 | [T-023](T-023-reference-fixture-quality.md) | Regenerate oracle fixtures at crisp font size | M4 | done | T-002, T-014 |
-| [T-024](T-024-jaspr-comparison-site.md) | Jaspr site: KaTeX JS vs Dart side-by-side (jaspr serve + Flutter embed) | M7 | in-progress | T-012, T-017, T-002 |
+| [T-024](T-024-jaspr-comparison-site.md) | Jaspr site: KaTeX JS vs Dart side-by-side (jaspr serve + Flutter embed) | M7 | done | T-012, T-017, T-002 |
 | [T-025](T-025-accent-rendering.md) | Fix accent rendering (\hat \bar \vec \tilde \widehat) | M6 | done | T-011, T-022 |
 | [T-026](T-026-sqrt-index-placement.md) | Fix `\sqrt[n]` index placement | M6 | done | T-011, T-020, T-022 |
 
