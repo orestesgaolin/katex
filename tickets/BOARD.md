@@ -24,7 +24,7 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-007](T-007-macro-expander.md) | MacroExpander + Namespace | M2 | done | T-005, T-006 |
 | [T-008](T-008-parser.md) | Parser (MVP grammar) | M2 | done | T-005, T-006, T-007, T-004 |
 | [T-009](T-009-box-tree.md) | Box tree node types (primary public model) | M3 | done | T-001 |
-| [T-010](T-010-options-buildcommon.md) | Options, Style, buildCommon | M3 | in-progress | T-003, T-009 |
+| [T-010](T-010-options-buildcommon.md) | Options, Style, buildCommon | M3 | done | T-003, T-009 |
 | [T-011](T-011-builders.md) | buildExpression + per-group builders (MVP) | M3 | done | T-008, T-010 |
 | [T-012](T-012-svg-serializer.md) | SVG serializer + embedded fonts | M4 | done | T-009, T-003 |
 | [T-013](T-013-cli.md) | CLI `bin/katex.dart` | M4 | done | T-011, T-012 |
@@ -38,6 +38,16 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-021](T-021-flutter-golden-fonts.md) | Flutter golden harness renders real glyphs | M5 | done | T-018 |
 | [T-022](T-022-stretchy-geometry.md) | Real stretchy delimiters + surd (SvgPathNode geometry) | M6 | done | T-011, T-012, T-016 |
 | [T-023](T-023-reference-fixture-quality.md) | Regenerate oracle fixtures at crisp font size | M4 | done | T-002, T-014 |
+| [T-024](T-024-jaspr-comparison-site.md) | Jaspr site: KaTeX JS vs Dart side-by-side (jaspr serve + Flutter embed) | M7 | in-progress | T-012, T-017, T-002 |
+| [T-025](T-025-accent-rendering.md) | Fix accent rendering (\hat \bar \vec \tilde \widehat) | M6 | done | T-011, T-022 |
+| [T-026](T-026-sqrt-index-placement.md) | Fix `\sqrt[n]` index placement | M6 | done | T-011, T-020, T-022 |
+
+## Side-by-side findings (user review, 2026-06-14)
+Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`
+(limits), `pmatrix` (stretched parens), `\left(\frac{a}{b}\right)`, `cases`. → The `pmatrix`
+reference the user questioned IS faithful KaTeX and ours matches it. **Real bugs found:**
+accents (`\hat` wrong glyph + mispositioned; `\vec` arrow missing) → **T-025**; `\sqrt[n]` index
+floats left instead of nesting in the radical → **T-026**.
 
 ## MVP status: ✅ COMPLETE
 
@@ -84,3 +94,4 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 - 2026-06-14 — T-021 **done**: "tofu" glyphs in Flutter goldens were a `FontLoader` family-name mismatch (needed the `packages/katex_flutter/`-prefixed family). **Real glyphs now render** in goldens (pixel-probe confirmed) + SVG cross-check. katex_flutter 59 tests.
 - 2026-06-14 — T-022 **done**: real stretchy surd geometry via load-bearing `SvgPathNode` (svgGeometry port + SVG `<path>` + Flutter `drawPath` + SVG-path-`d` parser). Oracle gate held 26/26; surd visual diff improved. katex 261 tests.
 - 2026-06-14 — User flagged reference PNGs look low-res vs browser KaTeX → **T-023 done**: root cause was rendering at the 16px browser default; regenerated fixtures at 48px (crisp, delimiters stretch correctly). Metrics unchanged (em-based) → gate still 26/26; updated svg-golden zoom 0.88→2.64. 261 tests.
+- 2026-06-14 — **T-024 added** (todo): comprehensive Jaspr static site rendering KaTeX JS vs `katex` Dart-SVG vs `katex_flutter` (Flutter web embed) side by side, via `jaspr serve`.

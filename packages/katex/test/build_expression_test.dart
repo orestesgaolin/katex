@@ -143,4 +143,91 @@ void main() {
       expect(svg.length, greaterThan(0));
     });
   });
+
+  // T-025 — accent rendering: glyph selection + centering + stretchy SVG.
+  group('accent rendering', () {
+    test(r'\hat{x} uses the Main-font circumflex glyph (U+005E)', () {
+      final nodes = _flatten(renderToBox(r'\hat{x}'));
+      // The accent glyph is the symbol-table `replace` for \hat: `^` (U+005E),
+      // NOT a combining diacritic. Its italic correction is zeroed.
+      final caret = nodes.whereType<GlyphNode>().where(
+        (g) => g.codepoint == 0x5e,
+      );
+      expect(caret, isNotEmpty, reason: r'\hat should render `^` from Main');
+      expect(caret.first.italic, 0, reason: 'accent italic is zeroed');
+    });
+
+    test(r'\hat{x} centers the accent over the base', () {
+      final root = renderToBox(r'\hat{x}');
+      // Find the accent VList and the leading centering kern before the `^`.
+      final vlists = _flatten(root).whereType<VList>();
+      KernNode? leadKern;
+      for (final v in vlists) {
+        for (final p in v.positions) {
+          final box = p.box;
+          if (box is HBox &&
+              box.children.length == 2 &&
+              box.children.first is KernNode &&
+              box.children.last is GlyphNode &&
+              (box.children.last as GlyphNode).codepoint == 0x5e) {
+            leadKern = box.children.first as KernNode;
+          }
+        }
+      }
+      expect(leadKern, isNotNull, reason: 'accent-body has a leading kern');
+      // left = (base.width - accentWidth) / 2 + skew. For \hat{x}:
+      // base x width 0.57153, accent `^` width 0.5, plus x's italic skew.
+      // The previous bug used `skew - width/2` ≈ -0.25 (drifting upper-left);
+      // the fix adds the base-width centering term, giving a POSITIVE kern at
+      // least as large as the pure centering offset.
+      const centering = (0.57153 - 0.5) / 2; // ≈ 0.0358
+      expect(
+        leadKern!.width,
+        greaterThanOrEqualTo(centering - 1e-9),
+        reason: 'centering kern must include the base-centering term',
+      );
+    });
+
+    test(r'\vec{x} renders the static "vec" SVG arrow (not a combining glyph)',
+        () {
+      final nodes = _flatten(renderToBox(r'\vec{x}'));
+      final vec = nodes.whereType<SvgPathNode>().where(
+        (s) => s.pathName == 'vec',
+      );
+      expect(vec, isNotEmpty, reason: r'\vec should use the vec SVG path');
+      expect(vec.first.pathData, isNotEmpty, reason: 'vec path data resolved');
+      // No combining-arrow glyph (U+20D7) should be emitted.
+      final combining = nodes.whereType<GlyphNode>().where(
+        (g) => g.codepoint == 0x20d7,
+      );
+      expect(combining, isEmpty, reason: 'no missing combining U+20D7 glyph');
+    });
+
+    test(r'\widehat{abc} uses a stretchy widehat SVG sized to the base', () {
+      final root = renderToBox(r'\widehat{abc}');
+      final nodes = _flatten(root);
+      final wide = nodes.whereType<SvgPathNode>().where(
+        (s) => s.pathName.startsWith('widehat'),
+      );
+      expect(wide, isNotEmpty, reason: r'\widehat should use a widehat SVG');
+      // 3 characters → widehat2.
+      expect(wide.first.pathName, 'widehat2');
+      expect(wide.first.pathData, isNotEmpty);
+      // The accent stretches to the base width.
+      expect(wide.first.width, closeTo(root.width, 1e-9));
+    });
+
+    test(r'\overrightarrow{AB} uses the sliced rightarrow SVG', () {
+      final nodes = _flatten(renderToBox(r'\overrightarrow{AB}'));
+      final arrow = nodes.whereType<SvgPathNode>().where(
+        (s) => s.pathName == 'rightarrow',
+      );
+      expect(arrow, isNotEmpty, reason: 'stretchy arrow uses rightarrow path');
+      expect(
+        arrow.first.preserveAspectRatio,
+        SvgPreserveAspectRatio.xMinYMinSlice,
+        reason: 'arrows are 400em-wide & sliced like KaTeX',
+      );
+    });
+  });
 }
