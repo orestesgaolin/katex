@@ -61,6 +61,19 @@ templates). Each row's 4th cell is an `@client` `FlutterCell` that renders a
 (`lib/widgets/math_cell.dart`). All cells share **one** Flutter engine — Jaspr
 adds a view per `FlutterEmbedView`.
 
+**Two things are easy to miss and both blank the column:**
+
+1. **The bootstrap script is NOT auto-injected.** You must include it yourself, or
+   `window._flutter` is undefined and every `FlutterEmbedView` throws
+   "Unexpected null value". It's added in `lib/main.server.dart`'s `Document` head:
+   ```dart
+   script(src: 'flutter_bootstrap.js', async: true),
+   ```
+2. **The embed host needs a real height.** `FlutterEmbedView`'s host is `height:100%`;
+   if its container has no definite height the `flutter-view` is created 0px tall
+   (mounted but invisible). `.flutter-cell` is a `display:block` cell stretched to the
+   grid row height, and its child fills it (`height:100%`) — see `app.dart`.
+
 `MathCell` (and its `package:flutter` imports) is pulled in **web-only** through a
 conditional import (`lib/components/math_cell_builder.dart` →
 `_web.dart` / `_io.dart`), so the static server prerender never touches Flutter.
@@ -80,12 +93,13 @@ no WebGL-context exhaustion (no disappear-on-click), and each view is its own
 grid cell so it lines up by construction.
 
 > Note: the embed uses Flutter web multi-view under the hood. A previous
-> *hand-rolled* multi-view attempt showed missing-glyph boxes for some
-> KaTeX_Size symbols (`\oint`, `\bigcup`, angle/ceil/floor delimiters); that was
-> traced to a hand-rolled bootstrap that didn't load `FontManifest`. This path
-> uses the standard `{{flutter_build_config}}` bootstrap (correct font loading) —
-> verify the glyph-heavy rows (Delimiters, Big operators) render in a real
-> browser.
+> *hand-rolled* multi-view attempt (a custom bootstrap that stripped the standard
+> loader) showed missing-glyph boxes for some KaTeX_Size symbols (`\oint`,
+> `\bigcup`, angle/ceil/floor delimiters `⟨⟩⌈⌉⌊⌋`). With the **standard**
+> `flutter_bootstrap.js` (`{{flutter_js}}`/`{{flutter_build_config}}`) all of those
+> render correctly — verified in a real browser across Delimiters / Big-operators /
+> Roots / Accents. So multi-view itself was never the problem; the hand-rolled
+> bootstrap was.
 
 ## Known approximations
 

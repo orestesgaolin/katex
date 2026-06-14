@@ -23,6 +23,11 @@ void main() {
       // Vendored KaTeX JS — exposes the global `katex` object used by the
       // KatexJs client component on hydrate. `defer` keeps it non-blocking.
       script(src: 'katex/katex.min.js', defer: true),
+      // Flutter engine bootstrap (defines window._flutter). jaspr_flutter_embed
+      // does NOT auto-inject this — it must be included explicitly, or every
+      // FlutterEmbedView throws "Unexpected null value" (flutter!.loader! is
+      // null) and the katex_flutter column stays blank.
+      script(src: 'flutter_bootstrap.js', async: true),
     ],
     styles: [
       css('html, body').styles(

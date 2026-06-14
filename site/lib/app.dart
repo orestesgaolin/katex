@@ -185,13 +185,21 @@ class App extends StatelessComponent {
             alignItems: AlignItems.center,
             backgroundColor: const Color('#fafafa'),
           ),
-          // Flutter cell: the jaspr_flutter_embed host fills the cell so the
-          // embedded view sizes to the row height (set by the JS/SVG cells).
+          // Flutter cell: override the .cmp-cell flex-centering (which collapses
+          // the embed host to content height, leaving the flutter-view 0px tall)
+          // with a block whose child fills the grid-stretched cell. The cell is
+          // stretched to the row height (set by the JS/SVG cells), so a height:100%
+          // chain down to the FlutterEmbedView host gives the view a real height.
           css('.flutter-cell', [
-            css('& > *').styles(
-              width: 100.percent,
+            css('&').styles(
+              display: Display.block,
               minHeight: kRowMinHeight.px,
+              padding: Padding.zero,
+              overflow: Overflow.hidden,
+              position: const Position.relative(),
             ),
+            // FlutterEmbedView wrapper (div) + the loading placeholder.
+            css('& > *').styles(width: 100.percent, height: 100.percent),
             css('.flutter-loading').styles(minHeight: kRowMinHeight.px),
           ]),
         ]),
