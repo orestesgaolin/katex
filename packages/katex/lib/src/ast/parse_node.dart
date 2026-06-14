@@ -798,6 +798,19 @@ final class PhantomNode extends ParseNode {
   String get type => 'phantom';
 }
 
+/// `vphantom` — `\vphantom{...}` (reserves height/depth, zero width, no ink).
+/// Mirrors KaTeX `VPhantomNode`.
+final class VphantomNode extends ParseNode {
+  /// Creates a vphantom node.
+  const VphantomNode({required super.mode, required this.body, super.loc});
+
+  /// The phantom body.
+  final ParseNode body;
+
+  @override
+  String get type => 'vphantom';
+}
+
 /// `mclass` — explicit math-class wrapper (`\mathbin`, `\mathrel`, …).
 /// Mirrors KaTeX `MathClassNode`.
 final class MclassNode extends ParseNode {
@@ -989,4 +1002,259 @@ final class EnvironmentNode extends ParseNode {
 
   @override
   String get type => 'environment';
+}
+
+/// `mathchoice` — `\mathchoice{D}{T}{S}{SS}` (picks a body by current style).
+/// Mirrors KaTeX `MathChoiceNode`.
+final class MathChoiceNode extends ParseNode {
+  /// Creates a mathchoice node.
+  const MathChoiceNode({
+    required super.mode,
+    required this.display,
+    required this.text,
+    required this.script,
+    required this.scriptscript,
+    super.loc,
+  });
+
+  /// The display-style body.
+  final List<ParseNode> display;
+
+  /// The text-style body.
+  final List<ParseNode> text;
+
+  /// The script-style body.
+  final List<ParseNode> script;
+
+  /// The scriptscript-style body.
+  final List<ParseNode> scriptscript;
+
+  @override
+  String get type => 'mathchoice';
+}
+
+/// `htmlmathml` is defined above. `html` — `\htmlClass`/`\htmlId`/`\htmlStyle`/
+/// `\htmlData` (attributes are visually no-ops in our backend). Mirrors KaTeX
+/// `HtmlNode`.
+final class HtmlNode extends ParseNode {
+  /// Creates an html node.
+  const HtmlNode({
+    required super.mode,
+    required this.attributes,
+    required this.body,
+    super.loc,
+  });
+
+  /// The HTML attributes (`class`/`id`/`style`/`data-*`). Kept faithfully even
+  /// though the current backend does not render them.
+  final Map<String, String> attributes;
+
+  /// The wrapped expression.
+  final List<ParseNode> body;
+
+  @override
+  String get type => 'html';
+}
+
+/// `href` — `\href{url}{body}` / `\url{url}`. Mirrors KaTeX `HrefNode`. The
+/// link is a visual no-op in our backend; the URL is kept on the node.
+final class HrefNode extends ParseNode {
+  /// Creates an href node.
+  const HrefNode({
+    required super.mode,
+    required this.href,
+    required this.body,
+    super.loc,
+  });
+
+  /// The link target URL.
+  final String href;
+
+  /// The wrapped expression.
+  final List<ParseNode> body;
+
+  @override
+  String get type => 'href';
+}
+
+/// `smash` — `\smash[tb]{body}` (zeroes height and/or depth). Mirrors KaTeX
+/// `SmashNode`.
+final class SmashNode extends ParseNode {
+  /// Creates a smash node.
+  const SmashNode({
+    required super.mode,
+    required this.body,
+    required this.smashHeight,
+    required this.smashDepth,
+    super.loc,
+  });
+
+  /// The body.
+  final ParseNode body;
+
+  /// Whether to zero the height.
+  final bool smashHeight;
+
+  /// Whether to zero the depth.
+  final bool smashDepth;
+
+  @override
+  String get type => 'smash';
+}
+
+/// `lap` — `\mathllap`/`\mathrlap`/`\mathclap` (zero-width overlaps). Mirrors
+/// KaTeX `LapNode`. [alignment] is one of `llap`/`rlap`/`clap`.
+final class LapNode extends ParseNode {
+  /// Creates a lap node.
+  const LapNode({
+    required super.mode,
+    required this.alignment,
+    required this.body,
+    super.loc,
+  });
+
+  /// The lap alignment (`llap`, `rlap`, or `clap`).
+  final String alignment;
+
+  /// The body.
+  final ParseNode body;
+
+  @override
+  String get type => 'lap';
+}
+
+/// `horizBrace` — `\overbrace`/`\underbrace` (stretchy brace). Mirrors KaTeX
+/// `HorizBraceNode`.
+final class HorizBraceNode extends ParseNode {
+  /// Creates a horizBrace node.
+  const HorizBraceNode({
+    required super.mode,
+    required this.label,
+    required this.isOver,
+    required this.base,
+    super.loc,
+  });
+
+  /// The control-sequence name (`\overbrace` / `\underbrace`).
+  final String label;
+
+  /// Whether the brace sits above (`\overbrace`) the base.
+  final bool isOver;
+
+  /// The base expression.
+  final ParseNode base;
+
+  @override
+  String get type => 'horizBrace';
+}
+
+/// `xArrow` — extensible arrows (`\xrightarrow` & friends). Mirrors KaTeX
+/// `XArrowNode`.
+final class XArrowNode extends ParseNode {
+  /// Creates an xArrow node.
+  const XArrowNode({
+    required super.mode,
+    required this.label,
+    required this.body,
+    super.loc,
+    this.below,
+  });
+
+  /// The control-sequence name (`\xrightarrow`, …).
+  final String label;
+
+  /// The text above the arrow.
+  final ParseNode body;
+
+  /// The optional text below the arrow, or `null`.
+  final ParseNode? below;
+
+  @override
+  String get type => 'xArrow';
+}
+
+/// `raisebox` — `\raisebox{dy}{body}`. Mirrors KaTeX `RaiseBoxNode`.
+final class RaiseBoxNode extends ParseNode {
+  /// Creates a raisebox node.
+  const RaiseBoxNode({
+    required super.mode,
+    required this.dy,
+    required this.body,
+    super.loc,
+  });
+
+  /// The vertical raise amount.
+  final Measurement dy;
+
+  /// The body (parsed as an hbox).
+  final ParseNode body;
+
+  @override
+  String get type => 'raisebox';
+}
+
+/// `vcenter` — `\vcenter{body}` (centers on the math axis). Mirrors KaTeX
+/// `VCenterNode`.
+final class VcenterNode extends ParseNode {
+  /// Creates a vcenter node.
+  const VcenterNode({required super.mode, required this.body, super.loc});
+
+  /// The body.
+  final ParseNode body;
+
+  @override
+  String get type => 'vcenter';
+}
+
+/// `pmb` — `\pmb{body}` (poor-man's bold). Mirrors KaTeX `PmbNode`.
+final class PmbNode extends ParseNode {
+  /// Creates a pmb node.
+  const PmbNode({
+    required super.mode,
+    required this.mclass,
+    required this.body,
+    super.loc,
+  });
+
+  /// The math class derived from the body.
+  final MathClass mclass;
+
+  /// The wrapped expression.
+  final List<ParseNode> body;
+
+  @override
+  String get type => 'pmb';
+}
+
+/// `hbox` — `\hbox{...}` (prevents a soft line break; renders its body).
+/// Mirrors KaTeX `HboxNode`.
+final class HboxNode extends ParseNode {
+  /// Creates an hbox node.
+  const HboxNode({required super.mode, required this.body, super.loc});
+
+  /// The wrapped expression.
+  final List<ParseNode> body;
+
+  @override
+  String get type => 'hbox';
+}
+
+/// `verb` — `\verb|...|` literal monospace text. Mirrors KaTeX `VerbNode`.
+final class VerbNode extends ParseNode {
+  /// Creates a verb node.
+  const VerbNode({
+    required super.mode,
+    required this.body,
+    required this.star,
+    super.loc,
+  });
+
+  /// The verbatim text.
+  final String body;
+
+  /// Whether this is the starred form (`\verb*`).
+  final bool star;
+
+  @override
+  String get type => 'verb';
 }

@@ -474,7 +474,7 @@ class Parser {
       case ArgType.size:
         return parseSizeGroup(optional);
       case ArgType.url:
-        throw ParseError(r'\url is not supported in the MVP parser');
+        return parseUrlGroup(optional);
       case ArgType.math:
         return parseArgumentGroup(optional, Mode.math);
       case ArgType.text:
@@ -530,6 +530,28 @@ class Parser {
     consume(); // consume the end of the argument
     argToken.text = str.toString();
     return argToken;
+  }
+
+  /// Parses a URL argument (`\href`/`\url`), tweaking catcodes so `~`/`%` and
+  /// escaped specials pass through. Port of KaTeX's `parseUrlGroup`. Returns a
+  /// [RawNode] carrying the resolved URL string.
+  ParseNode? parseUrlGroup(bool optional) {
+    gullet.lexer
+      ..setCatcode('%', 13) // active character
+      ..setCatcode('~', 12); // other character
+    final res = parseStringGroup(optional);
+    gullet.lexer
+      ..setCatcode('%', 14) // comment character
+      ..setCatcode('~', 13); // active character
+    if (res == null) {
+      return null;
+    }
+    // Unescape backslash-escaped specials, matching KaTeX.
+    final url = res.text.replaceAllMapped(
+      RegExp(r'\\([#$%&~_^{}])'),
+      (m) => m.group(1)!,
+    );
+    return RawNode(mode: mode, string: url);
   }
 
   /// Parses a regex-delimited group (used for unbraced size arguments).
@@ -733,7 +755,21 @@ class Parser {
     var text = nucleus.text;
 
     if (RegExp(r'^\\verb[^a-zA-Z]').hasMatch(text)) {
-      throw ParseError(r'\verb is not supported in the MVP parser');
+      consume();
+      var arg = text.substring(5);
+      final star = arg.startsWith('*');
+      if (star) {
+        arg = arg.substring(1);
+      }
+      // Lexer's tokenRegex always produces matching first/last characters.
+      if (arg.length < 2 || arg[0] != arg[arg.length - 1]) {
+        throw ParseError(
+          r'\verb assertion failed -- '
+          'please report what input caused this bug',
+        );
+      }
+      arg = arg.substring(1, arg.length - 1); // remove first and last char
+      return VerbNode(mode: Mode.text, body: arg, star: star);
     }
 
     // Strip off any combining characters.

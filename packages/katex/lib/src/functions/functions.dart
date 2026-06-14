@@ -7,7 +7,12 @@ import 'package:katex/src/ast/parse_node.dart';
 import 'package:katex/src/environments/array.dart' as array_env;
 import 'package:katex/src/environments/environment_spec.dart';
 import 'package:katex/src/functions/function_spec.dart';
+import 'package:katex/src/functions/macro_functions.dart';
+import 'package:katex/src/parse/macro_expander.dart';
+import 'package:katex/src/parse/macros.dart' show MacroExpansion;
 import 'package:katex/src/parse/parse_error.dart';
+import 'package:katex/src/parse/parser.dart' show Parser;
+import 'package:katex/src/parse/token.dart';
 import 'package:katex/src/symbols/symbols.dart';
 
 bool _registered = false;
@@ -35,7 +40,26 @@ void ensureRegistered() {
   _registerKern();
   _registerRelax();
   _registerEnvironmentCommands();
+  _registerGenfracExtras();
+  _registerMathChoice();
+  _registerHtmlMathml();
+  _registerHtml();
+  _registerHref();
+  _registerPhantom();
+  _registerSmash();
+  _registerLap();
+  _registerHorizBrace();
+  _registerXArrow();
+  _registerDef();
+  _registerChar();
+  _registerVerb();
+  _registerRaiseBox();
+  _registerVcenter();
+  _registerPmb();
+  _registerHbox();
+  _registerRule();
   array_env.registerArrayEnvironments();
+  ensureMacrosRegistered();
 }
 
 // ---------------------------------------------------------------------------
@@ -1341,3 +1365,838 @@ void _registerEnvironmentCommands() {
     ),
   );
 }
+
+// ---------------------------------------------------------------------------
+// genfrac.ts extras — \above (infix) and \\abovefrac (genfrac variant)
+// ---------------------------------------------------------------------------
+
+void _registerGenfracExtras() {
+  // \above — infix variant that rewrites into \\abovefrac, carrying a size.
+  defineFunction(
+    <String>[r'\above'],
+    FunctionSpec(
+      type: 'infix',
+      numArgs: 1,
+      argTypes: const <ArgType?>[ArgType.size],
+      infix: true,
+      handler: (context, args, optArgs) {
+        return InfixNode(
+          mode: context.parser.mode,
+          replaceWith: r'\\abovefrac',
+          size: _assertSize(args[0]).value,
+          token: context.token?.text,
+        );
+      },
+    ),
+  );
+
+  // \\abovefrac — the genfrac produced by \above; takes numer, size, denom.
+  defineFunction(
+    <String>[r'\\abovefrac'],
+    FunctionSpec(
+      type: 'genfrac',
+      numArgs: 3,
+      argTypes: const <ArgType?>[ArgType.math, ArgType.size, ArgType.math],
+      handler: (context, args, optArgs) {
+        final numer = args[0];
+        final barNode = args[1];
+        // The middle arg arrives via handleInfixNodes as the original infix
+        // node carrying the size; accept either a SizeNode or an InfixNode.
+        final Measurement barSize;
+        if (barNode is SizeNode) {
+          barSize = barNode.value;
+        } else if (barNode is InfixNode && barNode.size != null) {
+          barSize = barNode.size!;
+        } else {
+          throw ParseError(r'\\abovefrac expected a size');
+        }
+        final denom = args[2];
+        final hasBarLine = barSize.number > 0;
+        return GenfracNode(
+          mode: context.parser.mode,
+          numer: numer,
+          denom: denom,
+          continued: false,
+          hasBarLine: hasBarLine,
+          barSize: barSize,
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// mathchoice.ts
+// ---------------------------------------------------------------------------
+
+void _registerMathChoice() {
+  defineFunction(
+    <String>[r'\mathchoice'],
+    FunctionSpec(
+      type: 'mathchoice',
+      numArgs: 4,
+      primitive: true,
+      handler: (context, args, optArgs) {
+        return MathChoiceNode(
+          mode: context.parser.mode,
+          display: ordargument(args[0]),
+          text: ordargument(args[1]),
+          script: ordargument(args[2]),
+          scriptscript: ordargument(args[3]),
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// htmlmathml.ts — \html@mathml (render only the HTML arg in our backend)
+// ---------------------------------------------------------------------------
+
+void _registerHtmlMathml() {
+  defineFunction(
+    <String>[r'\html@mathml'],
+    FunctionSpec(
+      type: 'htmlmathml',
+      numArgs: 2,
+      allowedInArgument: true,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        return HtmlMathmlNode(
+          mode: context.parser.mode,
+          html: ordargument(args[0]),
+          mathml: ordargument(args[1]),
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// html.ts — \htmlClass / \htmlId / \htmlStyle / \htmlData
+// ---------------------------------------------------------------------------
+
+void _registerHtml() {
+  defineFunction(
+    <String>[r'\htmlClass', r'\htmlId', r'\htmlStyle', r'\htmlData'],
+    FunctionSpec(
+      type: 'html',
+      numArgs: 2,
+      argTypes: const <ArgType?>[ArgType.raw, null],
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        final parser = context.parser;
+        final funcName = context.funcName;
+        final value = _assertRaw(args[0]).string;
+        final body = args[1];
+
+        parser.settings.reportNonstrict(
+          'htmlExtension',
+          'HTML extension is disabled on strict mode',
+        );
+
+        final attributes = <String, String>{};
+        Map<String, Object?> trustContext;
+        switch (funcName) {
+          case r'\htmlClass':
+            attributes['class'] = value;
+            trustContext = <String, Object?>{
+              'command': r'\htmlClass',
+              'class': value,
+            };
+          case r'\htmlId':
+            attributes['id'] = value;
+            trustContext = <String, Object?>{
+              'command': r'\htmlId',
+              'id': value,
+            };
+          case r'\htmlStyle':
+            attributes['style'] = value;
+            trustContext = <String, Object?>{
+              'command': r'\htmlStyle',
+              'style': value,
+            };
+          case r'\htmlData':
+            final data = value.split(',');
+            for (final item in data) {
+              final firstEquals = item.indexOf('=');
+              if (firstEquals < 0) {
+                throw ParseError(
+                  "\\htmlData key/value '$item' missing equals sign",
+                );
+              }
+              final key = item.substring(0, firstEquals);
+              final v = item.substring(firstEquals + 1);
+              attributes['data-${key.trim()}'] = v;
+            }
+            trustContext = <String, Object?>{
+              'command': r'\htmlData',
+              'attributes': attributes,
+            };
+          default:
+            throw ParseError('Unrecognized html command');
+        }
+
+        if (!parser.settings.isTrusted(trustContext)) {
+          return parser.formatUnsupportedCmd(funcName);
+        }
+        return HtmlNode(
+          mode: parser.mode,
+          attributes: attributes,
+          body: ordargument(body),
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// href.ts — \href / \url
+// ---------------------------------------------------------------------------
+
+void _registerHref() {
+  defineFunction(
+    <String>[r'\href'],
+    FunctionSpec(
+      type: 'href',
+      numArgs: 2,
+      argTypes: const <ArgType?>[ArgType.url, null],
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        final parser = context.parser;
+        final body = args[1];
+        final href = _assertUrl(args[0]).string;
+        if (!parser.settings.isTrusted(<String, Object?>{
+          'command': r'\href',
+          'url': href,
+        })) {
+          return parser.formatUnsupportedCmd(r'\href');
+        }
+        return HrefNode(
+          mode: parser.mode,
+          href: href,
+          body: ordargument(body),
+        );
+      },
+    ),
+  );
+
+  defineFunction(
+    <String>[r'\url'],
+    FunctionSpec(
+      type: 'href',
+      numArgs: 1,
+      argTypes: const <ArgType?>[ArgType.url],
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        final parser = context.parser;
+        final href = _assertUrl(args[0]).string;
+        if (!parser.settings.isTrusted(<String, Object?>{
+          'command': r'\url',
+          'url': href,
+        })) {
+          return parser.formatUnsupportedCmd(r'\url');
+        }
+        final chars = <ParseNode>[];
+        for (var i = 0; i < href.length; i++) {
+          var c = href[i];
+          if (c == '~') {
+            c = r'\textasciitilde';
+          }
+          chars.add(TextOrdNode(mode: Mode.text, text: c));
+        }
+        final bodyNode = TextNode(
+          mode: parser.mode,
+          body: chars,
+          font: r'\texttt',
+        );
+        return HrefNode(
+          mode: parser.mode,
+          href: href,
+          body: ordargument(bodyNode),
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// phantom.ts — \phantom / \vphantom (\hphantom is a macro)
+// ---------------------------------------------------------------------------
+
+void _registerPhantom() {
+  defineFunction(
+    <String>[r'\phantom'],
+    FunctionSpec(
+      type: 'phantom',
+      numArgs: 1,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        return PhantomNode(
+          mode: context.parser.mode,
+          body: ordargument(args[0]),
+        );
+      },
+    ),
+  );
+
+  defineFunction(
+    <String>[r'\vphantom'],
+    FunctionSpec(
+      type: 'vphantom',
+      numArgs: 1,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        return VphantomNode(mode: context.parser.mode, body: args[0]);
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// smash.ts
+// ---------------------------------------------------------------------------
+
+void _registerSmash() {
+  defineFunction(
+    <String>[r'\smash'],
+    FunctionSpec(
+      type: 'smash',
+      numArgs: 1,
+      numOptionalArgs: 1,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        var smashHeight = false;
+        var smashDepth = false;
+        final tbArg = optArgs[0];
+        if (tbArg is OrdGroupNode) {
+          for (final node in tbArg.body) {
+            final letter = node is SymbolParseNode ? node.text : '';
+            if (letter == 't') {
+              smashHeight = true;
+            } else if (letter == 'b') {
+              smashDepth = true;
+            } else {
+              smashHeight = false;
+              smashDepth = false;
+              break;
+            }
+          }
+        } else {
+          smashHeight = true;
+          smashDepth = true;
+        }
+        return SmashNode(
+          mode: context.parser.mode,
+          body: args[0],
+          smashHeight: smashHeight,
+          smashDepth: smashDepth,
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// lap.ts — \mathllap / \mathrlap / \mathclap (\llap/\rlap/\clap are macros)
+// ---------------------------------------------------------------------------
+
+void _registerLap() {
+  defineFunction(
+    <String>[r'\mathllap', r'\mathrlap', r'\mathclap'],
+    FunctionSpec(
+      type: 'lap',
+      numArgs: 1,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        return LapNode(
+          mode: context.parser.mode,
+          alignment: context.funcName.substring(5),
+          body: args[0],
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// horizBrace.ts — \overbrace / \underbrace / \overbracket / \underbracket
+// ---------------------------------------------------------------------------
+
+void _registerHorizBrace() {
+  defineFunction(
+    <String>[r'\overbrace', r'\underbrace', r'\overbracket', r'\underbracket'],
+    FunctionSpec(
+      type: 'horizBrace',
+      numArgs: 1,
+      handler: (context, args, optArgs) {
+        return HorizBraceNode(
+          mode: context.parser.mode,
+          label: context.funcName,
+          isOver: context.funcName.contains(r'\over'),
+          base: args[0],
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// arrow.ts — \xrightarrow & friends
+// ---------------------------------------------------------------------------
+
+void _registerXArrow() {
+  defineFunction(
+    <String>[
+      r'\xleftarrow',
+      r'\xrightarrow',
+      r'\xLeftarrow',
+      r'\xRightarrow',
+      r'\xleftrightarrow',
+      r'\xLeftrightarrow',
+      r'\xhookleftarrow',
+      r'\xhookrightarrow',
+      r'\xmapsto',
+      r'\xrightharpoondown',
+      r'\xrightharpoonup',
+      r'\xleftharpoondown',
+      r'\xleftharpoonup',
+      r'\xrightleftharpoons',
+      r'\xleftrightharpoons',
+      r'\xlongequal',
+      r'\xtwoheadrightarrow',
+      r'\xtwoheadleftarrow',
+      r'\xtofrom',
+      // mhchem extension support.
+      r'\xrightleftarrows',
+      r'\xrightequilibrium',
+      r'\xleftequilibrium',
+      // {CD} environment support.
+      r'\\cdrightarrow',
+      r'\\cdleftarrow',
+      r'\\cdlongequal',
+    ],
+    FunctionSpec(
+      type: 'xArrow',
+      numArgs: 1,
+      numOptionalArgs: 1,
+      handler: (context, args, optArgs) {
+        return XArrowNode(
+          mode: context.parser.mode,
+          label: context.funcName,
+          body: args[0],
+          below: optArgs[0],
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// def.ts — \global \long \def \gdef \edef \xdef \let \futurelet
+// ---------------------------------------------------------------------------
+
+const Map<String, String> _globalMap = <String, String>{
+  r'\global': r'\global',
+  r'\long': r'\\globallong',
+  r'\\globallong': r'\\globallong',
+  r'\def': r'\gdef',
+  r'\gdef': r'\gdef',
+  r'\edef': r'\xdef',
+  r'\xdef': r'\xdef',
+  r'\let': r'\\globallet',
+  r'\futurelet': r'\\globalfuture',
+};
+
+final RegExp _controlSequenceForbidden = RegExp(r'^(?:[\\{}$&#^_]|EOF)$');
+
+String _checkControlSequence(Token tok) {
+  final name = tok.text;
+  if (_controlSequenceForbidden.hasMatch(name)) {
+    throw ParseError('Expected a control sequence', tok);
+  }
+  return name;
+}
+
+Token _getRHS(MacroExpander gullet) {
+  var tok = gullet.popToken();
+  if (tok.text == '=') {
+    // consume optional equals
+    tok = gullet.popToken();
+    if (tok.text == ' ') {
+      // consume one optional space
+      tok = gullet.popToken();
+    }
+  }
+  return tok;
+}
+
+void _letCommand(
+  Parser parser,
+  String name,
+  Token tok, {
+  required bool global,
+}) {
+  final gullet = parser.gullet;
+  var macro = gullet.macros.get(tok.text);
+  if (macro == null) {
+    // don't expand it later even if a macro with the same name is defined.
+    tok.noexpand = true;
+    macro = MacroExpansion(
+      tokens: <Token>[tok],
+      numArgs: 0,
+      unexpandable: !gullet.isExpandable(tok.text),
+    );
+  }
+  gullet.macros.set(name, macro, global: global);
+}
+
+void _registerDef() {
+  // <prefix> -> \global | \long
+  defineFunction(
+    <String>[r'\global', r'\long', r'\\globallong'],
+    FunctionSpec(
+      type: 'internal',
+      numArgs: 0,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        final parser = context.parser..consumeSpaces();
+        final token = parser.fetch();
+        if (_globalMap.containsKey(token.text)) {
+          // KaTeX doesn't have \par, so ignore \long.
+          if (context.funcName == r'\global' ||
+              context.funcName == r'\\globallong') {
+            token.text = _globalMap[token.text]!;
+          }
+          final fn = parser.parseFunction(null, null);
+          if (fn is! InternalNode) {
+            throw ParseError('Invalid token after macro prefix', token);
+          }
+          return fn;
+        }
+        throw ParseError('Invalid token after macro prefix', token);
+      },
+    ),
+  );
+
+  // <definition> -> \def | \gdef | \edef | \xdef
+  defineFunction(
+    <String>[r'\def', r'\gdef', r'\edef', r'\xdef'],
+    FunctionSpec(
+      type: 'internal',
+      numArgs: 0,
+      allowedInText: true,
+      primitive: true,
+      handler: (context, args, optArgs) {
+        final parser = context.parser;
+        final gullet = parser.gullet;
+        final funcName = context.funcName;
+        var tok = gullet.popToken();
+        final name = tok.text;
+        if (_controlSequenceForbidden.hasMatch(name)) {
+          throw ParseError('Expected a control sequence', tok);
+        }
+
+        var numArgs = 0;
+        Token? insert;
+        final delimiters = <List<String>>[<String>[]];
+        // <parameter text> contains no braces.
+        while (gullet.future().text != '{') {
+          tok = gullet.popToken();
+          if (tok.text == '#') {
+            // A trailing `#{` inserts `{` at both ends.
+            if (gullet.future().text == '{') {
+              insert = gullet.future();
+              delimiters[numArgs].add('{');
+              break;
+            }
+            tok = gullet.popToken();
+            if (!RegExp(r'^[1-9]$').hasMatch(tok.text)) {
+              throw ParseError('Invalid argument number "${tok.text}"');
+            }
+            if (int.parse(tok.text) != numArgs + 1) {
+              throw ParseError('Argument number "${tok.text}" out of order');
+            }
+            numArgs++;
+            delimiters.add(<String>[]);
+          } else if (tok.text == 'EOF') {
+            throw ParseError('Expected a macro definition');
+          } else {
+            delimiters[numArgs].add(tok.text);
+          }
+        }
+        // replacement text, enclosed in '{' and '}' and properly nested.
+        var tokens = gullet.consumeArg().tokens;
+        if (insert != null) {
+          tokens.insert(0, insert);
+        }
+        if (funcName == r'\edef' || funcName == r'\xdef') {
+          tokens = gullet.expandTokens(tokens);
+          tokens = tokens.reversed.toList(); // to fit in with stack order
+        }
+        gullet.macros.set(
+          name,
+          MacroExpansion(
+            tokens: tokens,
+            numArgs: numArgs,
+            delimiters: delimiters,
+          ),
+          global: funcName == _globalMap[funcName],
+        );
+        return InternalNode(mode: parser.mode);
+      },
+    ),
+  );
+
+  // <let assignment> -> \let | \\globallet
+  defineFunction(
+    <String>[r'\let', r'\\globallet'],
+    FunctionSpec(
+      type: 'internal',
+      numArgs: 0,
+      allowedInText: true,
+      primitive: true,
+      handler: (context, args, optArgs) {
+        final parser = context.parser;
+        final name = _checkControlSequence(parser.gullet.popToken());
+        parser.gullet.consumeSpaces();
+        final tok = _getRHS(parser.gullet);
+        _letCommand(
+          parser,
+          name,
+          tok,
+          global: context.funcName == r'\\globallet',
+        );
+        return InternalNode(mode: parser.mode);
+      },
+    ),
+  );
+
+  // \futurelet | \\globalfuture
+  defineFunction(
+    <String>[r'\futurelet', r'\\globalfuture'],
+    FunctionSpec(
+      type: 'internal',
+      numArgs: 0,
+      allowedInText: true,
+      primitive: true,
+      handler: (context, args, optArgs) {
+        final parser = context.parser;
+        final name = _checkControlSequence(parser.gullet.popToken());
+        final middle = parser.gullet.popToken();
+        final tok = parser.gullet.popToken();
+        _letCommand(
+          parser,
+          name,
+          tok,
+          global: context.funcName == r'\\globalfuture',
+        );
+        parser.gullet
+          ..pushToken(tok)
+          ..pushToken(middle);
+        return InternalNode(mode: parser.mode);
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// char.ts — \@char (the function backing the \char macro)
+// ---------------------------------------------------------------------------
+
+void _registerChar() {
+  defineFunction(
+    <String>[r'\@char'],
+    FunctionSpec(
+      type: 'textord',
+      numArgs: 1,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        final arg = args[0];
+        if (arg is! OrdGroupNode) {
+          throw ParseError(r'\@char expected a grouped argument');
+        }
+        final numberBuf = StringBuffer();
+        for (final node in arg.body) {
+          numberBuf.write(_assertTextord(node).text);
+        }
+        final numberStr = numberBuf.toString();
+        final code = int.tryParse(numberStr);
+        final String text;
+        if (code == null) {
+          throw ParseError('\\@char has non-numeric argument $numberStr');
+        } else if (code < 0 || code >= 0x10ffff) {
+          throw ParseError('\\@char with invalid code point $numberStr');
+        } else if (code <= 0xffff) {
+          text = String.fromCharCode(code);
+        } else {
+          // Astral code point; split into surrogate halves.
+          final c = code - 0x10000;
+          text = String.fromCharCodes(<int>[
+            (c >> 10) + 0xd800,
+            (c & 0x3ff) + 0xdc00,
+          ]);
+        }
+        return TextOrdNode(mode: context.parser.mode, text: text);
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// verb.ts — \verb (\verb is parsed directly in the Parser; this is the fallback)
+// ---------------------------------------------------------------------------
+
+void _registerVerb() {
+  defineFunction(
+    <String>[r'\verb'],
+    FunctionSpec(
+      type: 'verb',
+      numArgs: 0,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        // \verb and \verb* are handled directly in the Parser. Reaching here
+        // means the two delimiters failed to match in the Lexer's regex.
+        throw ParseError(
+          r'\verb ended by end of line instead of matching delimiter',
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// raisebox.ts
+// ---------------------------------------------------------------------------
+
+void _registerRaiseBox() {
+  defineFunction(
+    <String>[r'\raisebox'],
+    FunctionSpec(
+      type: 'raisebox',
+      numArgs: 2,
+      argTypes: const <ArgType?>[ArgType.size, ArgType.hbox],
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        final amount = _assertSize(args[0]).value;
+        return RaiseBoxNode(
+          mode: context.parser.mode,
+          dy: amount,
+          body: args[1],
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// vcenter.ts
+// ---------------------------------------------------------------------------
+
+void _registerVcenter() {
+  defineFunction(
+    <String>[r'\vcenter'],
+    FunctionSpec(
+      type: 'vcenter',
+      numArgs: 1,
+      argTypes: const <ArgType?>[null],
+      handler: (context, args, optArgs) {
+        return VcenterNode(mode: context.parser.mode, body: args[0]);
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// pmb.ts
+// ---------------------------------------------------------------------------
+
+void _registerPmb() {
+  defineFunction(
+    <String>[r'\pmb'],
+    FunctionSpec(
+      type: 'pmb',
+      numArgs: 1,
+      allowedInText: true,
+      handler: (context, args, optArgs) {
+        return PmbNode(
+          mode: context.parser.mode,
+          mclass: _pmbBinrelClass(args[0]),
+          body: ordargument(args[0]),
+        );
+      },
+    ),
+  );
+}
+
+// Mirrors KaTeX `mclass.binrelClass`.
+MathClass _pmbBinrelClass(ParseNode arg) {
+  final atom = arg is OrdGroupNode && arg.body.isNotEmpty ? arg.body[0] : arg;
+  if (atom is AtomNode &&
+      (atom.family == Group.bin || atom.family == Group.rel)) {
+    return atom.family == Group.bin ? MathClass.mbin : MathClass.mrel;
+  }
+  return MathClass.mord;
+}
+
+// ---------------------------------------------------------------------------
+// hbox.ts — \hbox (compatibility with \vcenter)
+// ---------------------------------------------------------------------------
+
+void _registerHbox() {
+  defineFunction(
+    <String>[r'\hbox'],
+    FunctionSpec(
+      type: 'hbox',
+      numArgs: 1,
+      argTypes: const <ArgType?>[ArgType.text],
+      allowedInText: true,
+      primitive: true,
+      handler: (context, args, optArgs) {
+        return HboxNode(
+          mode: context.parser.mode,
+          body: ordargument(args[0]),
+        );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// rule.ts
+// ---------------------------------------------------------------------------
+
+void _registerRule() {
+  defineFunction(
+    <String>[r'\rule'],
+    FunctionSpec(
+      type: 'rule',
+      numArgs: 2,
+      numOptionalArgs: 1,
+      allowedInText: true,
+      argTypes: const <ArgType?>[ArgType.size, ArgType.size, ArgType.size],
+      handler: (context, args, optArgs) {
+        final shift = optArgs[0];
+        final width = _assertSize(args[0]);
+        final height = _assertSize(args[1]);
+        return RuleNode(
+          mode: context.parser.mode,
+          width: width.value,
+          height: height.value,
+          shift: shift == null ? null : _assertSize(shift).value,
+        );
+      },
+    ),
+  );
+}
+
+RawNode _assertRaw(ParseNode node) {
+  if (node is RawNode) {
+    return node;
+  }
+  throw ParseError('Expected node of type raw, but got ${node.type}');
+}
+
+// \url / \href arg (ArgType.url) is delivered as a RawNode carrying the URL
+// string (KaTeX uses a dedicated url node; the string is all we need here).
+RawNode _assertUrl(ParseNode node) => _assertRaw(node);
