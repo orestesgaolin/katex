@@ -51,6 +51,7 @@ Map<String, Object?> __editorEditor(_editor.Editor c) => {
 Map<String, Object?> __flutter_cellFlutterCell(_flutter_cell.FlutterCell c) => {
   'tex': c.tex,
   'displayMode': c.displayMode,
+  'heightPx': c.heightPx,
 };
 Map<String, Object?> __katex_jsKatexJs(_katex_js.KatexJs c) => {
   'tex': c.tex,

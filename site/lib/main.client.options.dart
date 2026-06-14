@@ -36,6 +36,7 @@ ClientOptions get defaultClientOptions => ClientOptions(
       (p) => _flutter_cell.FlutterCell(
         tex: p['tex'] as String,
         displayMode: p['displayMode'] as bool,
+        heightPx: p['heightPx'] as int,
       ),
       loader: _flutter_cell.loadLibrary,
     ),

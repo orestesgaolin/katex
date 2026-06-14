@@ -22,6 +22,7 @@ import 'package:universal_web/web.dart' as web;
 import 'dart_svg.dart';
 import 'gh_issue.dart';
 import 'math_cell_builder.dart';
+import 'math_metrics.dart';
 
 /// The global `katex` object exposed by the vendored `katex.min.js`.
 @JS('katex')
@@ -269,6 +270,14 @@ class _EditorState extends State<Editor> {
             // Keyed by the rendered string + mode so the embedded view rebuilds
             // its widget whenever the input changes.
             key: ValueKey<String>('$_displayMode|$_tex'),
+            // Pin the view height to the input's full math height so the
+            // multi-view scene isn't bottom-clipped (same fix as the rows).
+            constraints: ViewConstraints(
+              minHeight:
+                  mathCellHeightPx(_tex, displayMode: _displayMode).toDouble(),
+              maxHeight:
+                  mathCellHeightPx(_tex, displayMode: _displayMode).toDouble(),
+            ),
             widget: mathCellWidget(_tex, displayMode: _displayMode),
             loader: div(classes: 'flutter-loading', const []),
           ),

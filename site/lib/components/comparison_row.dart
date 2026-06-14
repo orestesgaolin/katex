@@ -15,6 +15,7 @@ import 'dart_svg.dart';
 import 'flutter_cell.dart';
 import 'gh_issue.dart';
 import 'katex_js.dart';
+import 'math_metrics.dart';
 
 /// Minimum per-row cell height (px). Rows grow taller for tall expressions.
 const int kRowMinHeight = 72;
@@ -60,8 +61,14 @@ class ComparisonRow extends StatelessComponent {
         DartSvg(example.tex, displayMode: example.displayMode),
       ]),
       // Column 4: katex_flutter via jaspr_flutter_embed (one shared engine).
+      // The view is pinned to the math's full pixel height (height + depth) via
+      // ViewConstraints inside FlutterCell, so it isn't bottom-clipped.
       div(classes: 'cmp-cell flutter-cell', [
-        FlutterCell(tex: example.tex, displayMode: example.displayMode),
+        FlutterCell(
+          tex: example.tex,
+          displayMode: example.displayMode,
+          heightPx: mathCellHeightPx(example.tex, displayMode: example.displayMode),
+        ),
       ]),
     ]);
   }

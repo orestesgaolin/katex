@@ -42,7 +42,10 @@ class MathCell extends StatelessWidget {
         body: Center(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            // Horizontal padding only — the host is sized to the math's full
+            // height (see math_metrics.mathCellHeightPx), so vertical padding
+            // would push the centred math past the view and clip it.
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Math(
               tex,
               displayMode: displayMode,
