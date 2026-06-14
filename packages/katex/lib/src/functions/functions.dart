@@ -1370,11 +1370,11 @@ void _registerEnvironmentCommands() {
 }
 
 // ---------------------------------------------------------------------------
-// genfrac.ts extras — \above (infix) and \\abovefrac (genfrac variant)
+// genfrac.ts extras — \above (infix) and \abovefrac (genfrac variant)
 // ---------------------------------------------------------------------------
 
 void _registerGenfracExtras() {
-  // \above — infix variant that rewrites into \\abovefrac, carrying a size.
+  // \above — infix variant that rewrites into \abovefrac, carrying a size.
   defineFunction(
     <String>[r'\above'],
     FunctionSpec(
@@ -1385,7 +1385,7 @@ void _registerGenfracExtras() {
       handler: (context, args, optArgs) {
         return InfixNode(
           mode: context.parser.mode,
-          replaceWith: r'\\abovefrac',
+          replaceWith: r'\abovefrac',
           size: _assertSize(args[0]).value,
           token: context.token?.text,
         );
@@ -1393,9 +1393,9 @@ void _registerGenfracExtras() {
     ),
   );
 
-  // \\abovefrac — the genfrac produced by \above; takes numer, size, denom.
+  // \abovefrac — the genfrac produced by \above; takes numer, size, denom.
   defineFunction(
-    <String>[r'\\abovefrac'],
+    <String>[r'\abovefrac'],
     FunctionSpec(
       type: 'genfrac',
       numArgs: 3,
@@ -1411,7 +1411,7 @@ void _registerGenfracExtras() {
         } else if (barNode is InfixNode && barNode.size != null) {
           barSize = barNode.size!;
         } else {
-          throw ParseError(r'\\abovefrac expected a size');
+          throw ParseError(r'\abovefrac expected a size');
         }
         final denom = args[2];
         final hasBarLine = barSize.number > 0;
