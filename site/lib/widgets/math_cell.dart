@@ -12,11 +12,22 @@ class MathCell extends StatelessWidget {
   const MathCell({
     required this.tex,
     required this.displayMode,
+    required this.heightPx,
     super.key,
   });
 
   final String tex;
   final bool displayMode;
+
+  /// The math's full pixel height (height + depth + slack) — see
+  /// `math_metrics.mathCellHeightPx`. The widget lays out an explicit
+  /// `SizedBox` of this height so the painted CanvasKit scene is tall enough to
+  /// show the whole expression (deep `\cfrac` denominators included) instead of
+  /// being clamped to the embed host's 72 px min-height.
+  ///
+  /// `0` (the default) means "size to the math's intrinsic extent" — used by
+  /// callers (e.g. the live editor) that pin the view height themselves.
+  final int heightPx;
 
   /// Logical px per em, matched to the KaTeX-JS column.
   ///
@@ -29,34 +40,48 @@ class MathCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Wide math scrolls horizontally; only horizontal padding is used so
+    // vertical padding never eats into the centered math.
+    final Widget math = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Math(
+        tex,
+        displayMode: displayMode,
+        fontSize: _kEmPx,
+        onError: (BuildContext context, Object error) => Text(
+          'error: $error',
+          style: const TextStyle(color: Color(0xFFCC0000), fontSize: 11),
+        ),
+      ),
+    );
+
+    // Vertical centering + clip-free painting:
+    //
+    // When [heightPx] is given (the comparison rows), the embedded view is
+    // pinned by `FlutterCell` to exactly this height (the math's full height +
+    // depth). We lay the math out in an explicit-height `SizedBox(heightPx)` so
+    // the content matches the view exactly (the whole expression — deep `\cfrac`
+    // denominators included — is painted, not clipped), and `Center` it so it
+    // sits centered within that box.
+    //
+    // When [heightPx] is 0 (e.g. the live editor, which pins the view height
+    // itself), fall back to the math's intrinsic extent.
+    final Widget body = heightPx > 0
+        ? Center(
+            child: SizedBox(
+              height: heightPx.toDouble(),
+              child: Center(child: math),
+            ),
+          )
+        : Center(child: math);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(scaffoldBackgroundColor: Colors.transparent),
       home: Scaffold(
         backgroundColor: Colors.transparent,
-        // Horizontal scroll for wide math; vertical never scrolls/clips because
-        // the host view is sized to the full math height + depth (see the
-        // `.flutter-cell` / editor-cell CSS, which lets the cell grow to its
-        // content rather than clamping it). Padding keeps descenders/denominators
-        // off the clip edge.
-        body: Center(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            // Horizontal padding only — the host is sized to the math's full
-            // height (see math_metrics.mathCellHeightPx), so vertical padding
-            // would push the centred math past the view and clip it.
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Math(
-              tex,
-              displayMode: displayMode,
-              fontSize: _kEmPx,
-              onError: (BuildContext context, Object error) => Text(
-                'error: $error',
-                style: const TextStyle(color: Color(0xFFCC0000), fontSize: 11),
-              ),
-            ),
-          ),
-        ),
+        body: body,
       ),
     );
   }

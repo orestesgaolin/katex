@@ -3,5 +3,9 @@ library;
 
 import '../widgets/math_cell.dart';
 
-dynamic mathCellWidget(String tex, {required bool displayMode}) =>
-    MathCell(tex: tex, displayMode: displayMode);
+dynamic mathCellWidget(
+  String tex, {
+  required bool displayMode,
+  int heightPx = 0,
+}) =>
+    MathCell(tex: tex, displayMode: displayMode, heightPx: heightPx);

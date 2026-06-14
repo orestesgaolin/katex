@@ -87,8 +87,6 @@ const List<ExampleGroup> kGroups = <ExampleGroup>[
       'oint',
       r'\oint_C \vec{F}\cdot d\vec{r}',
       displayMode: true,
-      approx: true,
-      note: 'stretchy/large \\oint glyph (MVP)',
     ),
     Example(
       'bigcup',
@@ -110,8 +108,6 @@ const List<ExampleGroup> kGroups = <ExampleGroup>[
       'sized-delims',
       r'\bigl( \Bigl[ \biggl\{ \Biggl\langle x \Biggr\rangle \biggr\} \Bigr] \bigr)',
       displayMode: true,
-      approx: true,
-      note: 'manual \\bigl..\\Biggr sizing (MVP)',
     ),
   ]),
   ExampleGroup('Accents', <Example>[
@@ -123,12 +119,7 @@ const List<ExampleGroup> kGroups = <ExampleGroup>[
     Example('widetilde', r'\widetilde{xyz}'),
     Example('overline-x', r'\overline{x+y}'),
     Example('underline-x', r'\underline{x+y}'),
-    Example(
-      'overrightarrow',
-      r'\overrightarrow{AB}',
-      approx: true,
-      note: 'stretchy arrow accent (MVP)',
-    ),
+    Example('overrightarrow', r'\overrightarrow{AB}'),
   ]),
   ExampleGroup('Fonts', <Example>[
     Example('mathbf', r'\mathbf{Abc}'),
@@ -153,8 +144,6 @@ const List<ExampleGroup> kGroups = <ExampleGroup>[
     Example(
       'thin-space',
       r'a\,b\;c\quad d\qquad e',
-      approx: true,
-      note: r'\, and \; thin-spaces unimplemented (MVP); \quad/\qquad OK',
     ),
     Example('greek-alpha-beta', r'\alpha + \beta + \gamma'),
     Example('cdot', r'a \cdot b \times c'),
@@ -199,8 +188,6 @@ const List<ExampleGroup> kGroups = <ExampleGroup>[
       'array',
       r'\begin{array}{c|c} a & b \\ \hline c & d \end{array}',
       displayMode: true,
-      approx: true,
-      note: 'array rules/alignment (MVP)',
     ),
   ]),
   ExampleGroup('Real-world formulas', <Example>[
@@ -219,8 +206,6 @@ const List<ExampleGroup> kGroups = <ExampleGroup>[
       'gaussian-cdf',
       r'\Phi(x) = \frac{1}{\sqrt{2\pi}} \int_{-\infty}^x e^{-t^2/2}\,dt',
       displayMode: true,
-      approx: true,
-      note: r'uses \, thin-space (unimplemented in MVP); rest matches',
     ),
     Example(
       'sum-identity',

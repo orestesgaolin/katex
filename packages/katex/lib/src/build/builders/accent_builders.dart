@@ -83,45 +83,84 @@ SvgPathNode _staticSvg(String value) {
 
 // `katexImagesData` subset for the over-accent / stretchy labels that the
 // accent function registers: [paths, minWidth, viewBoxHeight, align?].
-const Map<String, ({List<String> paths, double minWidth, double viewBoxHeight})>
+//
+// `aligns` is the `preserveAspectRatio` x-anchor for each path, matching
+// KaTeX's `stretchy.ts`. The KaTeX SVGs are 400em wide with the actual ink
+// (arrowhead / brace corner) parked at one end; the anchor decides which end
+// stays visible when the slice is clipped to the base width:
+//   * 'xMaxYMin' — head at the RIGHT end (x≈400000), e.g. `rightarrow`.
+//   * 'xMinYMin' — head at the LEFT end (x≈0), e.g. `leftarrow`.
+// For single-path arrows KaTeX uses one `hide-tail` span; for paired arrows
+// (e.g. \overleftrightarrow) it lays two half-width spans side by side, the
+// left one `xMinYMin` (keeps the left head) and the right one `xMaxYMin`
+// (keeps the right head).
+const Map<
+  String,
+  ({
+    List<String> paths,
+    double minWidth,
+    double viewBoxHeight,
+    List<String> aligns,
+  })
+>
 _katexImagesData = {
   'overrightarrow': (
     paths: ['rightarrow'],
     minWidth: 0.888,
     viewBoxHeight: 522,
+    aligns: ['xMaxYMin'],
   ),
-  'overleftarrow': (paths: ['leftarrow'], minWidth: 0.888, viewBoxHeight: 522),
+  'overleftarrow': (
+    paths: ['leftarrow'],
+    minWidth: 0.888,
+    viewBoxHeight: 522,
+    aligns: ['xMinYMin'],
+  ),
   'Overrightarrow': (
     paths: ['doublerightarrow'],
     minWidth: 0.888,
     viewBoxHeight: 560,
+    aligns: ['xMaxYMin'],
   ),
   'overleftharpoon': (
     paths: ['leftharpoon'],
     minWidth: 0.888,
     viewBoxHeight: 522,
+    aligns: ['xMinYMin'],
   ),
   'overrightharpoon': (
     paths: ['rightharpoon'],
     minWidth: 0.888,
     viewBoxHeight: 522,
+    aligns: ['xMaxYMin'],
   ),
   'overleftrightarrow': (
     paths: ['leftarrow', 'rightarrow'],
     minWidth: 0.888,
     viewBoxHeight: 522,
+    aligns: ['xMinYMin', 'xMaxYMin'],
   ),
   'overgroup': (
     paths: ['leftgroup', 'rightgroup'],
     minWidth: 0.888,
     viewBoxHeight: 342,
+    aligns: ['xMinYMin', 'xMaxYMin'],
   ),
   'overlinesegment': (
     paths: ['leftlinesegment', 'rightlinesegment'],
     minWidth: 0.888,
     viewBoxHeight: 522,
+    aligns: ['xMinYMin', 'xMaxYMin'],
   ),
 };
+
+/// Maps a KaTeX `preserveAspectRatio` x-anchor name to our slice enum. The
+/// stretchy arrow SVGs always anchor the top (`YMin`); only the x-anchor
+/// varies (left head vs. right head).
+SvgPreserveAspectRatio _sliceForAlign(String align) =>
+    align.startsWith('xMax')
+    ? SvgPreserveAspectRatio.xMaxYMinSlice
+    : SvgPreserveAspectRatio.xMinYMinSlice;
 
 const Set<String> _wideAccentLabels = {
   'widehat',
@@ -138,10 +177,12 @@ int _baseNumChars(ParseNode base) {
   return 1;
 }
 
-/// Port of KaTeX `stretchy.stretchySvg` for the accent path. Returns an
-/// [SvgPathNode] whose logical width is [baseWidth] (the caller sets the final
-/// width) and whose height matches KaTeX's chosen image height.
-SvgPathNode _stretchySvg(AccentNode group, double baseWidth) {
+/// Port of KaTeX `stretchy.stretchySvg` for the accent path. Returns a
+/// [BoxNode] whose logical width is [baseWidth] and whose height matches
+/// KaTeX's chosen image height. Single-path arrows return one [SvgPathNode];
+/// paired arrows (`\overleftrightarrow`, `\overgroup`, `\overlinesegment`)
+/// return an [HBox] of two half-width sliced nodes so BOTH heads/corners show.
+BoxNode _stretchySvg(AccentNode group, double baseWidth) {
   final label = group.label.substring(1); // strip leading backslash
 
   if (_wideAccentLabels.contains(label)) {
@@ -209,20 +250,50 @@ SvgPathNode _stretchySvg(AccentNode group, double baseWidth) {
     );
   }
   final height = data.viewBoxHeight / 1000;
-  // For multi-path arrows (e.g. \overleftrightarrow) KaTeX overlays two halves;
-  // the box tree draws the first path 400em wide & sliced, which covers the
-  // common single-arrow case faithfully and is a reasonable approximation for
-  // the paired ones (both halves share the same 400em sliced geometry).
-  final pathName = data.paths.first;
-  return SvgPathNode(
-    pathName: pathName,
-    pathData: geom.svgPath[pathName] ?? '',
+
+  if (data.paths.length == 1) {
+    // Single arrow / harpoon: one 400em-wide path, sliced so the (undistorted)
+    // arrowhead stays visible. `xMaxYMin` for right-pointing heads (head at
+    // x≈400000), `xMinYMin` for left-pointing heads (head at x≈0).
+    final pathName = data.paths.first;
+    return SvgPathNode(
+      pathName: pathName,
+      pathData: geom.svgPath[pathName] ?? '',
+      viewBoxWidth: 400000,
+      viewBoxHeight: data.viewBoxHeight,
+      width: baseWidth,
+      height: height,
+      preserveAspectRatio: _sliceForAlign(data.aligns.first),
+    );
+  }
+
+  // Paired arrows / groups (e.g. \overleftrightarrow): KaTeX lays two
+  // half-width spans side by side. The left half is anchored `xMinYMin` (keeps
+  // the left head, parked at x≈0) and the right half `xMaxYMin` (keeps the
+  // right head, parked at x≈400000). Each half is its own 400em-wide sliced
+  // SVG clipped to its half of the base width, so both heads/corners render.
+  final halfWidth = baseWidth / 2;
+  final left = SvgPathNode(
+    pathName: data.paths[0],
+    pathData: geom.svgPath[data.paths[0]] ?? '',
     viewBoxWidth: 400000,
     viewBoxHeight: data.viewBoxHeight,
-    width: baseWidth,
+    width: halfWidth,
     height: height,
-    preserveAspectRatio: SvgPreserveAspectRatio.xMinYMinSlice,
+    preserveAspectRatio: _sliceForAlign(data.aligns[0]),
   );
+  final right = SvgPathNode(
+    pathName: data.paths[1],
+    pathData: geom.svgPath[data.paths[1]] ?? '',
+    viewBoxWidth: 400000,
+    viewBoxHeight: data.viewBoxHeight,
+    width: halfWidth,
+    height: height,
+    preserveAspectRatio: _sliceForAlign(data.aligns[1]),
+  );
+  // HBox width = sum of the two halves (= baseWidth), height = max child
+  // height (= the shared arrow height), depth = 0.
+  return HBox([left, right]);
 }
 
 BoxNode _buildAccent(AccentNode group, Options options) {

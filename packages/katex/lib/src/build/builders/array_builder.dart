@@ -27,10 +27,27 @@ class _Outrow {
   double pos = 0;
 }
 
+/// A horizontal rule (`\hline`/`\hdashline`) at a given vertical [pos] (em from
+/// the top of the array). [isDashed] selects `\hdashline`.
+class _HLine {
+  _HLine(this.pos, {required this.isDashed});
+  final double pos;
+  final bool isDashed;
+}
+
 BoxNode _buildArray(ArrayNode group, Options options) {
   final nr = group.body.length;
+  final hLinesBeforeRow = group.hLinesBeforeRow;
   var nc = 0;
   final body = <_Outrow>[];
+  final hlines = <_HLine>[];
+
+  // From LaTeX \showthe\arrayrulewidth (= 0.04 em), floored at the user's
+  // minRuleThickness override. Mirrors KaTeX's `ruleThickness`.
+  final arrayRuleWidth = options.fontMetrics()['arrayRuleWidth'];
+  final ruleThickness = arrayRuleWidth > options.minRuleThickness
+      ? arrayRuleWidth
+      : options.minRuleThickness;
 
   final pt = 1 / options.fontMetrics().ptPerEm;
   var arraycolsep = 5 * pt;
@@ -46,6 +63,23 @@ BoxNode _buildArray(ArrayNode group, Options options) {
   final arstrutDepth = 0.3 * arrayskip;
 
   var totalHeight = 0.0;
+
+  // Records the position(s) of \hline(s) sitting in a gap between rows (or at
+  // the top/bottom edge). KaTeX adds 0.25em between consecutive rules so a
+  // \hline\hline draws as a visible double line. Mirrors `setHLinePos`.
+  void setHLinePos(List<bool> hlinesInGap) {
+    for (var i = 0; i < hlinesInGap.length; i++) {
+      if (i > 0) {
+        totalHeight += 0.25;
+      }
+      hlines.add(_HLine(totalHeight, isDashed: hlinesInGap[i]));
+    }
+  }
+
+  // \hline(s) at the very top of the array.
+  if (hLinesBeforeRow.isNotEmpty) {
+    setHLinePos(hLinesBeforeRow[0]);
+  }
 
   for (var r = 0; r < nr; r++) {
     final inrow = group.body[r];
@@ -89,6 +123,11 @@ BoxNode _buildArray(ArrayNode group, Options options) {
     outrow.pos = totalHeight;
     totalHeight += depth + gap;
     body.add(outrow);
+
+    // \hline(s) following this row, if any.
+    if (r + 1 < hLinesBeforeRow.length) {
+      setHLinePos(hLinesBeforeRow[r + 1]);
+    }
   }
 
   final offset = totalHeight / 2 + options.fontMetrics().axisHeight;
@@ -102,8 +141,14 @@ BoxNode _buildArray(ArrayNode group, Options options) {
         ? colDescriptions[colDescrNum]
         : null;
 
-    // Skip/render separators (vertical rules) — for the MVP we add their
-    // width but not the rule glyph (rare in the gallery).
+    // Column separators (`|`/`:`) → a vertical rule spanning the whole array.
+    // KaTeX inserts a `doubleRuleSep` gap between consecutive separators (for
+    // `||`/`::`), then draws each as a thin bordered box of height `totalHeight`
+    // shifted so it covers the array; here we model that as a [RuleNode] of
+    // `ruleThickness` width spanning the array's full height/depth. KaTeX gives
+    // the box `margin: 0 -ruleThickness/2`, i.e. zero net horizontal advance and
+    // a centered rule — we replicate that with half-width negative kerns either
+    // side so neighbouring columns are not pushed apart.
     var firstSeparator = true;
     while (colDescr != null && colDescr.isSeparator) {
       if (!firstSeparator) {
@@ -114,6 +159,27 @@ BoxNode _buildArray(ArrayNode group, Options options) {
           ),
         );
       }
+
+      // The array box spans box-y from `-offset` (top) to
+      // `totalHeight - offset` (bottom); a full-height separator therefore has
+      // height `offset` and depth `totalHeight - offset`. `:` renders dashed in
+      // KaTeX, but the box tree has no dash primitive, so it falls back solid.
+      final separator = RuleNode(
+        width: ruleThickness,
+        height: offset,
+        depth: totalHeight - offset,
+      );
+      cols.add(
+        makeSpan(
+          [
+            KernNode(-ruleThickness / 2),
+            separator,
+            KernNode(-ruleThickness / 2),
+          ],
+          classes: const ['vertical-separator'],
+        ),
+      );
+
       firstSeparator = false;
       colDescrNum++;
       colDescr = colDescrNum < colDescriptions.length
@@ -180,6 +246,25 @@ BoxNode _buildArray(ArrayNode group, Options options) {
     colDescrNum++;
   }
 
-  final tableBody = makeSpan(cols, classes: const ['mtable']);
+  BoxNode tableBody = makeSpan(cols, classes: const ['mtable']);
+
+  // Draw \hline(s), if any. KaTeX wraps the table in a vlist and stacks a
+  // full-width horizontal rule at each `hline.pos - offset` baseline shift.
+  if (hlines.isNotEmpty) {
+    final arrayWidth = tableBody.width;
+    final vListElems = <VListChild>[VListChild.elem(tableBody)];
+    for (final hline in hlines) {
+      // A horizontal rule (`makeLineSpan`) of full array width, `ruleThickness`
+      // tall, sitting at the gap position. `:`/\hdashline has no dash primitive
+      // in the box tree, so it renders as a solid rule too.
+      final rule = RuleNode(width: arrayWidth, height: ruleThickness);
+      vListElems.add(VListChild.elem(rule, shift: hline.pos - offset));
+    }
+    tableBody = makeVList(
+      positionType: VListPositionType.individualShift,
+      children: vListElems,
+    );
+  }
+
   return withAtomClass(makeFragment([tableBody]), 'mord', options: options);
 }

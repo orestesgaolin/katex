@@ -147,6 +147,16 @@ class KatexBoxPainter extends CustomPainter {
         // Uniform cover scale, top-left anchored (xMinYMin), overflow clipped.
         final s = sx > sy ? sx : sy;
         canvas.scale(s, s);
+      case SvgPreserveAspectRatio.xMaxYMinSlice:
+        // Uniform cover scale, top-RIGHT anchored (xMaxYMin), overflow clipped.
+        // Shift so the scaled viewBox's right edge meets the box's right edge,
+        // keeping the arrowhead at x≈viewBoxWidth visible; the long shaft tail
+        // runs off the left and is cut by the clipRect above.
+        final s = sx > sy ? sx : sy;
+        final dx = dstW - node.viewBoxWidth * s;
+        canvas
+          ..translate(dx, 0)
+          ..scale(s, s);
     }
 
     final paint = Paint()

@@ -144,6 +144,112 @@ void main() {
     });
   });
 
+  // T-036 (RC-array) — `\hline` horizontal rules and `|`/`:` column separators.
+  //
+  // KaTeX `environments/array.ts` (htmlBuilder) draws:
+  //   * `\hline`/`\hdashline` between rows → a full-array-width rule
+  //     (`arrayRuleWidth` thick) stacked in the array vlist at the boundary.
+  //   * column `|`/`:` separators → a thin vertical rule (`arrayRuleWidth`
+  //     wide) spanning the array height, with `doubleRuleSep` between `||`.
+  // Before this ticket the Dart builder emitted neither (only zero-width row
+  // struts), so an `array` with rules rendered as bare entries. These tests
+  // assert the rules now exist as visible (non-zero-extent) RuleNodes.
+  group('array rules (T-036)', () {
+    const display = KatexOptions(displayMode: true);
+
+    // The visible rules are the only RuleNodes with BOTH a positive width and a
+    // positive height — the per-row layout struts are zero-width.
+    List<RuleNode> visibleRules(BoxNode root) => _flatten(root)
+        .whereType<RuleNode>()
+        .where((r) => r.width > 0 && (r.height + r.depth) > 0)
+        .toList();
+
+    // From LaTeX \showthe\arrayrulewidth — KaTeX's `fontMetrics.arrayRuleWidth`
+    // is 0.04 em across all styles, and minRuleThickness defaults to 0.
+    const arrayRuleWidth = 0.04;
+
+    test('plain array (no colspec rules) emits no visible rules', () {
+      final root = renderToBox(
+        r'\begin{array}{cc} a&b \\ c&d \end{array}',
+        options: display,
+      );
+      expect(visibleRules(root), isEmpty);
+    });
+
+    test(r'\hline + | draw one horizontal rule and one vertical rule', () {
+      final root = renderToBox(
+        r'\begin{array}{c|c} a & b \\ \hline c & d \end{array}',
+        options: display,
+      );
+      final rules = visibleRules(root);
+      // Vertical separator: width == arrayRuleWidth, tall.
+      final verticals = rules
+          .where((r) => (r.width - arrayRuleWidth).abs() < 1e-9)
+          .toList();
+      // Horizontal hline: height == arrayRuleWidth, wide.
+      final horizontals = rules
+          .where((r) => (r.height - arrayRuleWidth).abs() < 1e-9)
+          .toList();
+      expect(verticals, hasLength(1), reason: 'one | separator');
+      expect(horizontals, hasLength(1), reason: r'one \hline');
+      // The vertical separator spans (roughly) the whole array height; the
+      // hline is much wider than it is tall.
+      expect(verticals.single.height + verticals.single.depth, greaterThan(1));
+      expect(horizontals.single.width, greaterThan(1));
+    });
+
+    test(r'\begin{array}{|c|c|} grid draws 3 verticals and 3 hlines', () {
+      final root = renderToBox(
+        r'\begin{array}{|c|c|} \hline a&b \\ \hline c&d \\ \hline \end{array}',
+        options: display,
+      );
+      final rules = visibleRules(root);
+      final verticals = rules
+          .where((r) => (r.width - arrayRuleWidth).abs() < 1e-9)
+          .length;
+      final horizontals = rules
+          .where((r) => (r.height - arrayRuleWidth).abs() < 1e-9)
+          .length;
+      expect(verticals, 3, reason: 'three | separators');
+      expect(horizontals, 3, reason: r'three \hline rows');
+    });
+
+    test('hlines sit at distinct vertical positions', () {
+      final root = renderToBox(
+        r'\begin{array}{|c|c|} \hline a&b \\ \hline c&d \\ \hline \end{array}',
+        options: display,
+      );
+      // The hline rules live in the outer vlist that wraps the table body;
+      // their baseline shifts must be distinct (top / middle / bottom).
+      final vlists = _flatten(root).whereType<VList>();
+      final shifts = <double>[];
+      for (final v in vlists) {
+        for (final p in v.positions) {
+          if (p.box is RuleNode && (p.box as RuleNode).width > 1) {
+            shifts.add(p.shift);
+          }
+        }
+      }
+      expect(shifts, hasLength(3));
+      expect(shifts.toSet(), hasLength(3), reason: 'all hline shifts distinct');
+    });
+
+    test('pmatrix/cases/aligned remain rule-free (no regression)', () {
+      for (final tex in [
+        r'\begin{pmatrix} a & b \\ c & d \end{pmatrix}',
+        r'f(x) = \begin{cases} 1 & x > 0 \\ 0 & x \le 0 \end{cases}',
+        r'\begin{aligned} a &= b \\ c &= d \end{aligned}',
+      ]) {
+        final root = renderToBox(tex, options: display);
+        expect(
+          visibleRules(root),
+          isEmpty,
+          reason: 'no array rules expected in $tex',
+        );
+      }
+    });
+  });
+
   // T-033 (RC-3) — `\sqrt[n]{x}` root-index placement.
   //
   // KaTeX `functions/sqrt.ts` positions the optional index ("\rootBox") with:
@@ -322,7 +428,10 @@ void main() {
       expect(wide.first.width, closeTo(root.width, 1e-9));
     });
 
-    test(r'\overrightarrow{AB} uses the sliced rightarrow SVG', () {
+    test(r'\overrightarrow{AB} uses the right-anchored rightarrow SVG', () {
+      // T-036 (RC-arrow): the rightarrow's head sits at the RIGHT end of the
+      // 400em path, so it must be sliced with `xMaxYMin` (top-RIGHT anchored)
+      // or the head is clipped off the right (the bug = `xMinYMin`).
       final nodes = _flatten(renderToBox(r'\overrightarrow{AB}'));
       final arrow = nodes.whereType<SvgPathNode>().where(
         (s) => s.pathName == 'rightarrow',
@@ -330,8 +439,45 @@ void main() {
       expect(arrow, isNotEmpty, reason: 'stretchy arrow uses rightarrow path');
       expect(
         arrow.first.preserveAspectRatio,
+        SvgPreserveAspectRatio.xMaxYMinSlice,
+        reason: 'right-arrows are 400em-wide & right-anchored (head stays)',
+      );
+    });
+
+    test(r'\overleftarrow{AB} uses the left-anchored leftarrow SVG', () {
+      // The leftarrow's head sits at the LEFT end of the 400em path, so it is
+      // sliced with `xMinYMin` (top-left anchored) to keep the head visible.
+      final nodes = _flatten(renderToBox(r'\overleftarrow{AB}'));
+      final arrow = nodes.whereType<SvgPathNode>().where(
+        (s) => s.pathName == 'leftarrow',
+      );
+      expect(arrow, isNotEmpty, reason: 'stretchy arrow uses leftarrow path');
+      expect(
+        arrow.first.preserveAspectRatio,
         SvgPreserveAspectRatio.xMinYMinSlice,
-        reason: 'arrows are 400em-wide & sliced like KaTeX',
+        reason: 'left-arrows are 400em-wide & left-anchored (head stays)',
+      );
+    });
+
+    test(r'\overleftrightarrow{AB} draws both halves with both heads', () {
+      // Paired arrows render two half-width sliced SVGs: a left half
+      // (leftarrow, left-anchored, keeps the left head) and a right half
+      // (rightarrow, right-anchored, keeps the right head).
+      final nodes = _flatten(renderToBox(r'\overleftrightarrow{AB}'));
+      final svgs = nodes.whereType<SvgPathNode>().toList();
+      final leftHalf = svgs.where((s) => s.pathName == 'leftarrow');
+      final rightHalf = svgs.where((s) => s.pathName == 'rightarrow');
+      expect(leftHalf, isNotEmpty, reason: 'left half uses leftarrow path');
+      expect(rightHalf, isNotEmpty, reason: 'right half uses rightarrow path');
+      expect(
+        leftHalf.first.preserveAspectRatio,
+        SvgPreserveAspectRatio.xMinYMinSlice,
+        reason: 'left head anchored at the left edge',
+      );
+      expect(
+        rightHalf.first.preserveAspectRatio,
+        SvgPreserveAspectRatio.xMaxYMinSlice,
+        reason: 'right head anchored at the right edge',
       );
     });
 

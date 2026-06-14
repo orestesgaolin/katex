@@ -285,9 +285,13 @@ class _SvgSerializer {
     final y = -node.height * fontSize;
     final par = switch (node.preserveAspectRatio) {
       SvgPreserveAspectRatio.none => 'none',
-      // KaTeX uses "xMinYMin slice" for the surd: uniform cover, top-left
-      // anchored, overflow clipped to the box.
+      // KaTeX uses "xMinYMin slice" for the surd and left-pointing arrows:
+      // uniform cover, top-left anchored, overflow clipped to the box.
       SvgPreserveAspectRatio.xMinYMinSlice => 'xMinYMin slice',
+      // "xMaxYMin slice" for right-pointing arrows: uniform cover, top-RIGHT
+      // anchored so the arrowhead at x≈400000 stays visible at the box's right
+      // edge; the long shaft tail runs off the left and is clipped.
+      SvgPreserveAspectRatio.xMaxYMinSlice => 'xMaxYMin slice',
     };
     _buf
       ..write('<svg x="0" y="${_num(y)}" ')

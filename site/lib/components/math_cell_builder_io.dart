@@ -3,4 +3,9 @@
 library;
 
 // ignore: avoid_annotating_with_dynamic
-dynamic mathCellWidget(String tex, {required bool displayMode}) => null;
+dynamic mathCellWidget(
+  String tex, {
+  required bool displayMode,
+  int heightPx = 0,
+}) =>
+    null;

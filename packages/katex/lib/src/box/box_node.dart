@@ -573,13 +573,25 @@ class SpanNode extends BoxNode {
 ///    overflow clipped (used by the `\sqrt` surd, whose viewBox is
 ///    `0 0 400000 viewBoxHeight`: the path is drawn 400em wide and the box only
 ///    shows the left `advanceWidth` of it — the long vinculum runs off-box and
-///    is clipped, exactly KaTeX's `width:"400em"` + `slice`).
+///    is clipped, exactly KaTeX's `width:"400em"` + `slice`). Also used for the
+///    left half of stretchy arrows / left-pointing arrows (`\overleftarrow`),
+///    whose arrowhead sits at the *left* end of the 400em path, so anchoring
+///    the left edge keeps the head visible while the shaft tail runs off-box.
+///  * [xMaxYMinSlice] — uniform scale to *cover* the box, anchored
+///    top-**right**, overflow clipped. Used for right-pointing stretchy
+///    arrows (`\overrightarrow`), whose arrowhead sits at the *right* end
+///    (x≈400000) of the 400em path: anchoring the right edge keeps the head
+///    visible at the box right while the shaft tail runs off the *left*.
+///    Mirrors KaTeX's `preserveAspectRatio:"xMaxYMin slice"`.
 enum SvgPreserveAspectRatio {
   /// Non-uniform stretch to fill the box exactly.
   none,
 
   /// Uniform scale to cover the box, top-left anchored, overflow clipped.
   xMinYMinSlice,
+
+  /// Uniform scale to cover the box, top-right anchored, overflow clipped.
+  xMaxYMinSlice,
 }
 
 /// A stretchy SVG path: the real geometry for `\sqrt` surds and stacked

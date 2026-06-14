@@ -1,14 +1,17 @@
 /// Shared sizing for the `katex_flutter` cells.
 ///
-/// The embedded Flutter view is sized to its DOM host's box (which a
-/// `height:100%` chain resolves against the grid-stretched cell). CanvasKit
-/// clips painting to that surface, so if the host is shorter than the rendered
-/// math the bottom (descenders / fraction denominators) is cut off — DOM
-/// `overflow:visible` does NOT help, because the clip is inside the view canvas.
+/// The embedded Flutter view paints into a CanvasKit surface whose height is
+/// driven by the *content* Flutter lays out, anchored at the top of the view.
+/// `jaspr_flutter_embed` does NOT reliably grow that surface to a fixed
+/// `ViewConstraints` `maxHeight`; instead the painted scene was clamped to the
+/// host's initial min-height (`kRowMinHeight`, 72 px) — so tall `\cfrac` chains
+/// were cut off at the bottom and the math sat at the top of the row.
 ///
-/// Fix: floor each Flutter cell's height to the math's FULL pixel height
-/// (height + depth) via [mathCellHeightPx]. That grows the grid row, so the
-/// stretched cell — and the view — is tall enough to paint the whole expression.
+/// Fix: drive sizing from the WIDGET side. [MathCell] is handed [mathCellHeightPx]
+/// and lays out an explicit `SizedBox(height: …)` that centers the math, so the
+/// CanvasKit scene is painted at the FULL math height (no bottom clip) and the
+/// math is vertically centered inside it. The same value is used as the embed
+/// view's `minHeight` so the grid row is never shorter than the math.
 library;
 
 import 'package:katex/katex.dart';
@@ -22,10 +25,19 @@ const int kMathCellMinHeight = 72;
 
 /// The full pixel height a Flutter `Math` render of [tex] needs (height + depth
 /// at [kMathEmPx]), floored to [kMathCellMinHeight], plus a few px of slack for
-/// anti-aliasing / centering. Falls back to the floor on a parse error.
+/// anti-aliasing ink overflow / centering. Falls back to the floor on a parse
+/// error.
+///
+/// This is used two ways (see [MathCell] / `FlutterCell`):
+///  * as the embed view's `minHeight` (so the grid row grows tall enough), and
+///  * as the explicit content height [MathCell] lays the centered math out in,
+///    which is what actually sizes the painted CanvasKit scene.
 int mathCellHeightPx(String tex, {required bool displayMode}) {
   try {
     final box = renderToBox(tex, options: KatexOptions(displayMode: displayMode));
+    // +12 px of slack: a little extra above/below for glyph ink that paints
+    // marginally past the (height + depth) box and to keep the math off the
+    // clip edge when centered.
     final px = ((box.height + box.depth) * kMathEmPx).ceil() + 12;
     return px < kMathCellMinHeight ? kMathCellMinHeight : px;
   } on Object catch (_) {

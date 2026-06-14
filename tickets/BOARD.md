@@ -50,6 +50,8 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-033](T-033-render-refinements-and-editor.md) | Render refinements (site review #2) + live editor | M6/M7 | done | T-031 |
 | [T-034](T-034-render-batch3-and-site-clip.md) | Integral indices + sqrt clearance + site Flutter clipping | M6/M7 | done | T-033 |
 | [T-035](T-035-publishing-prep.md) | Publishing prep: pub.dev metadata + GH issue button + Pages deploy | M7 | done | T-024 |
+| [T-036](T-036-approximations-and-flutter-clip.md) | Fix \overrightarrow arrowhead + array rules; un-tag stale approx; Flutter cfrac clip/offset | M6/M7 | in-progress | T-034 |
+| [T-037](T-037-supported-functions-page.md) | "Supported functions" reference subpage (mirror katex.org/docs/supported) | M7 | todo | T-024 |
 
 ## Side-by-side findings (user review, 2026-06-14)
 Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`
