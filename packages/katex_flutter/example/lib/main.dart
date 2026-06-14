@@ -109,11 +109,79 @@ class GalleryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('katex_flutter gallery')),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: kGallery.length,
-        separatorBuilder: (_, __) => const Divider(height: 32),
-        itemBuilder: (context, index) => _GalleryRow(entry: kGallery[index]),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _RichTextDemo(),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: kGallery.length,
+              separatorBuilder: (_, __) => const Divider(height: 32),
+              itemBuilder: (context, index) =>
+                  _GalleryRow(entry: kGallery[index]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Demonstrates **inline math in rich text**: `Math` typeset inline within a
+/// paragraph via [mathSpan] in a `Text.rich`, baseline-aligned with the prose.
+class _RichTextDemo extends StatelessWidget {
+  const _RichTextDemo();
+
+  @override
+  Widget build(BuildContext context) {
+    const textStyle = TextStyle(
+      fontSize: 16,
+      height: 1.7,
+      color: Colors.black87,
+    );
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFF7F9FC),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Inline math in rich text',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text.rich(
+            TextSpan(
+              style: textStyle,
+              children: [
+                const TextSpan(text: 'The quadratic formula '),
+                mathSpan(r'x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}'),
+                const TextSpan(text: ' gives the roots of '),
+                mathSpan('ax^2 + bx + c = 0'),
+                const TextSpan(text: '. Euler’s identity '),
+                mathSpan(r'e^{i\pi} + 1 = 0'),
+                const TextSpan(text: ' ties together '),
+                mathSpan('e'),
+                const TextSpan(text: ', '),
+                mathSpan('i'),
+                const TextSpan(text: ', and '),
+                mathSpan(r'\pi'),
+                const TextSpan(text: '. A sum like '),
+                mathSpan(r'\sum_{i=1}^{n} i = \tfrac{n(n+1)}{2}'),
+                const TextSpan(
+                  text: ' flows inline with the text, on the baseline.',
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
