@@ -218,19 +218,24 @@ void main() {
   });
 
   group('SvgPathNode', () {
-    test('is an inert holder reporting explicit dims', () {
+    test('carries resolved geometry + explicit dims; derives viewBox', () {
       const node = SvgPathNode(
         pathName: 'sqrtMain',
+        pathData: 'M0 0 H400000 z',
+        viewBoxWidth: 400000,
+        viewBoxHeight: 1080,
         width: 1,
         height: 1.2,
         depth: 0.2,
-        viewBox: '0 0 400 1000',
+        preserveAspectRatio: SvgPreserveAspectRatio.xMinYMinSlice,
       );
       expect(node.pathName, 'sqrtMain');
+      expect(node.pathData, 'M0 0 H400000 z');
       expect(node.width, 1.0);
       expect(node.height, 1.2);
       expect(node.depth, 0.2);
-      expect(node.viewBox, '0 0 400 1000');
+      expect(node.viewBox, '0 0 400000 1080');
+      expect(node.preserveAspectRatio, SvgPreserveAspectRatio.xMinYMinSlice);
     });
   });
 
@@ -238,7 +243,14 @@ void main() {
     final nodes = <BoxNode>[
       const KernNode(0.1),
       const RuleNode(width: 1, height: 0.1),
-      const SvgPathNode(pathName: 'x', width: 1, height: 1),
+      const SvgPathNode(
+        pathName: 'x',
+        pathData: 'M0 0z',
+        viewBoxWidth: 100,
+        viewBoxHeight: 100,
+        width: 1,
+        height: 1,
+      ),
     ];
     for (final node in nodes) {
       final label = switch (node) {

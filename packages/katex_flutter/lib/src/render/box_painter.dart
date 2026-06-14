@@ -13,8 +13,10 @@
 ///  * [VList] → children placed at their resolved downward shifts
 ///    ([VList.positions]) — exactly the convention the serializer uses.
 ///  * [SpanNode] → applies its color to descendants.
-///  * [SvgPathNode] → MVP stub: nothing is drawn (stretchy geometry lands in
-///    M6).
+///  * [SvgPathNode] → the SVG `d` path is parsed to a [Path] and filled via
+///    [Canvas.drawPath], with the path's viewBox mapped onto the node's box
+///    (honoring [SvgPreserveAspectRatio]); this draws `\sqrt` surds and stacked
+///    stretchy delimiters.
 ///
 /// ## Coordinate system
 /// Box dimensions are in **em** (relative to the baseline). The painter
@@ -98,9 +100,62 @@ class KatexBoxPainter extends CustomPainter {
       case VList():
         _paintVList(canvas, node, x, baselineY, currentColor);
       case SvgPathNode():
-        // MVP stub: stretchy delimiter/accent geometry lands in M6.
-        break;
+        _paintSvgPath(canvas, node, x, baselineY, currentColor);
     }
+  }
+
+  // --- SvgPath (stretchy delimiters / sqrt surd) ----------------------------
+
+  void _paintSvgPath(
+    Canvas canvas,
+    SvgPathNode node,
+    double x,
+    double baselineY,
+    Color currentColor,
+  ) {
+    if (node.pathData.isEmpty || node.viewBoxWidth <= 0 ||
+        node.viewBoxHeight <= 0) {
+      return;
+    }
+    final path = parseSvgPath(node.pathData);
+
+    // Destination rect (pixels): box-x [0,width] and box-y [-height,+depth]
+    // relative to the baseline.
+    final dstLeft = x;
+    final dstTop = baselineY - node.height * fontSize;
+    final dstW = node.width * fontSize;
+    final dstH = (node.height + node.depth) * fontSize;
+    if (dstW <= 0 || dstH <= 0) {
+      return;
+    }
+
+    final sx = dstW / node.viewBoxWidth;
+    final sy = dstH / node.viewBoxHeight;
+
+    canvas
+      ..save()
+      // Clip to the box so the (slice) overflow of a 400em-wide surd viewBox is
+      // cut to the box, exactly like the SVG renderer.
+      ..clipRect(Rect.fromLTWH(dstLeft, dstTop, dstW, dstH))
+      ..translate(dstLeft, dstTop);
+
+    switch (node.preserveAspectRatio) {
+      case SvgPreserveAspectRatio.none:
+        // Non-uniform stretch to fill the box.
+        canvas.scale(sx, sy);
+      case SvgPreserveAspectRatio.xMinYMinSlice:
+        // Uniform cover scale, top-left anchored (xMinYMin), overflow clipped.
+        final s = sx > sy ? sx : sy;
+        canvas.scale(s, s);
+    }
+
+    final paint = Paint()
+      ..color = currentColor
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+    canvas
+      ..drawPath(path, paint)
+      ..restore();
   }
 
   // --- Glyph ----------------------------------------------------------------
@@ -325,4 +380,307 @@ class _GlyphKey {
 
   @override
   int get hashCode => Object.hash(text, family, variant, sizePx, colorValue);
+}
+
+/// Parses an SVG path `d` string into a [Path].
+///
+/// Supports the full SVG path command set that appears in KaTeX's
+/// `svgGeometry` data: move (`M`/`m`), line (`L`/`l`, `H`/`h`, `V`/`v`), cubic
+/// Bézier (`C`/`c`, `S`/`s`), quadratic Bézier (`Q`/`q`, `T`/`t`), elliptical
+/// arc (`A`/`a`), and close (`Z`/`z`), in both absolute (uppercase) and
+/// relative (lowercase) forms, including the SVG implicit-repeat rule (extra
+/// coordinate sets after a command repeat it; extras after `M`/`m` are treated
+/// as `L`/`l`). Numbers may be separated by whitespace and/or commas, may omit
+/// the leading `0` (`.5`), and may pack a sign as a separator (`1-2`).
+///
+/// Exposed (non-private) so it can be unit-tested directly.
+Path parseSvgPath(String d) {
+  return _SvgPathParser(d).parse();
+}
+
+class _SvgPathParser {
+  _SvgPathParser(this._d);
+
+  final String _d;
+  int _pos = 0;
+
+  final Path _path = Path();
+
+  // Current point.
+  double _cx = 0;
+  double _cy = 0;
+  // Subpath start (for Z).
+  double _sx = 0;
+  double _sy = 0;
+  // Last control point of the previous cubic/quadratic, for S/T smoothing.
+  double? _lastCubicCx;
+  double? _lastCubicCy;
+  double? _lastQuadCx;
+  double? _lastQuadCy;
+
+  Path parse() {
+    String? cmd;
+    while (true) {
+      _skipSep();
+      if (_pos >= _d.length) {
+        break;
+      }
+      final ch = _d[_pos];
+      if (_isCommand(ch)) {
+        cmd = ch;
+        _pos++;
+      } else if (cmd == null) {
+        // Malformed: bail gracefully with whatever we have.
+        break;
+      }
+      _runCommand(cmd);
+      // After M/m the implicit repeat is L/l.
+      if (cmd == 'M') {
+        cmd = 'L';
+      } else if (cmd == 'm') {
+        cmd = 'l';
+      }
+    }
+    return _path;
+  }
+
+  void _runCommand(String cmd) {
+    switch (cmd) {
+      case 'M':
+        final x = _num();
+        final y = _num();
+        _cx = x;
+        _cy = y;
+        _path.moveTo(_cx, _cy);
+        _sx = _cx;
+        _sy = _cy;
+        _resetSmooth();
+      case 'm':
+        final x = _num();
+        final y = _num();
+        _cx += x;
+        _cy += y;
+        _path.moveTo(_cx, _cy);
+        _sx = _cx;
+        _sy = _cy;
+        _resetSmooth();
+      case 'L':
+        final x = _num();
+        final y = _num();
+        _cx = x;
+        _cy = y;
+        _path.lineTo(_cx, _cy);
+        _resetSmooth();
+      case 'l':
+        _cx += _num();
+        _cy += _num();
+        _path.lineTo(_cx, _cy);
+        _resetSmooth();
+      case 'H':
+        _cx = _num();
+        _path.lineTo(_cx, _cy);
+        _resetSmooth();
+      case 'h':
+        _cx += _num();
+        _path.lineTo(_cx, _cy);
+        _resetSmooth();
+      case 'V':
+        _cy = _num();
+        _path.lineTo(_cx, _cy);
+        _resetSmooth();
+      case 'v':
+        _cy += _num();
+        _path.lineTo(_cx, _cy);
+        _resetSmooth();
+      case 'C':
+        _cubic(_num(), _num(), _num(), _num(), _num(), _num());
+      case 'c':
+        _cubic(
+          _cx + _num(),
+          _cy + _num(),
+          _cx + _num(),
+          _cy + _num(),
+          _cx + _num(),
+          _cy + _num(),
+        );
+      case 'S':
+        final c1 = _reflectedCubic();
+        _cubic(c1.dx, c1.dy, _num(), _num(), _num(), _num());
+      case 's':
+        final c1 = _reflectedCubic();
+        _cubic(
+          c1.dx,
+          c1.dy,
+          _cx + _num(),
+          _cy + _num(),
+          _cx + _num(),
+          _cy + _num(),
+        );
+      case 'Q':
+        _quad(_num(), _num(), _num(), _num());
+      case 'q':
+        _quad(_cx + _num(), _cy + _num(), _cx + _num(), _cy + _num());
+      case 'T':
+        final c = _reflectedQuad();
+        _quad(c.dx, c.dy, _num(), _num());
+      case 't':
+        final c = _reflectedQuad();
+        _quad(c.dx, c.dy, _cx + _num(), _cy + _num());
+      case 'A':
+        _arc(_num(), _num(), _num(), _num(), _num(), _num(), _num());
+      case 'a':
+        _arc(
+          _num(),
+          _num(),
+          _num(),
+          _num(),
+          _num(),
+          _cx + _num(),
+          _cy + _num(),
+        );
+      case 'Z':
+      case 'z':
+        _path.close();
+        _cx = _sx;
+        _cy = _sy;
+        _resetSmooth();
+      default:
+        // Unknown command: skip one number to avoid an infinite loop.
+        if (_hasNumber()) {
+          _num();
+        }
+    }
+  }
+
+  void _cubic(
+    double x1,
+    double y1,
+    double x2,
+    double y2,
+    double x,
+    double y,
+  ) {
+    _path.cubicTo(x1, y1, x2, y2, x, y);
+    _cx = x;
+    _cy = y;
+    _lastCubicCx = x2;
+    _lastCubicCy = y2;
+    _lastQuadCx = null;
+    _lastQuadCy = null;
+  }
+
+  void _quad(double x1, double y1, double x, double y) {
+    _path.quadraticBezierTo(x1, y1, x, y);
+    _cx = x;
+    _cy = y;
+    _lastQuadCx = x1;
+    _lastQuadCy = y1;
+    _lastCubicCx = null;
+    _lastCubicCy = null;
+  }
+
+  Offset _reflectedCubic() {
+    if (_lastCubicCx != null) {
+      return Offset(2 * _cx - _lastCubicCx!, 2 * _cy - _lastCubicCy!);
+    }
+    return Offset(_cx, _cy);
+  }
+
+  Offset _reflectedQuad() {
+    if (_lastQuadCx != null) {
+      return Offset(2 * _cx - _lastQuadCx!, 2 * _cy - _lastQuadCy!);
+    }
+    return Offset(_cx, _cy);
+  }
+
+  void _arc(
+    double rx,
+    double ry,
+    double xAxisRotation,
+    double largeArc,
+    double sweep,
+    double x,
+    double y,
+  ) {
+    _path.arcToPoint(
+      Offset(x, y),
+      radius: Radius.elliptical(rx, ry),
+      rotation: xAxisRotation,
+      largeArc: largeArc != 0,
+      clockwise: sweep != 0,
+    );
+    _cx = x;
+    _cy = y;
+    _resetSmooth();
+  }
+
+  void _resetSmooth() {
+    _lastCubicCx = null;
+    _lastCubicCy = null;
+    _lastQuadCx = null;
+    _lastQuadCy = null;
+  }
+
+  // --- Tokenizer ------------------------------------------------------------
+
+  static bool _isCommand(String c) =>
+      'MmLlHhVvCcSsQqTtAaZz'.contains(c);
+
+  void _skipSep() {
+    while (_pos < _d.length) {
+      final c = _d.codeUnitAt(_pos);
+      // space, tab, CR, LF, comma
+      if (c == 0x20 || c == 0x09 || c == 0x0d || c == 0x0a || c == 0x2c) {
+        _pos++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  bool _hasNumber() {
+    _skipSep();
+    if (_pos >= _d.length) {
+      return false;
+    }
+    final c = _d[_pos];
+    return (c.codeUnitAt(0) >= 0x30 && c.codeUnitAt(0) <= 0x39) ||
+        c == '-' ||
+        c == '+' ||
+        c == '.';
+  }
+
+  double _num() {
+    _skipSep();
+    final start = _pos;
+    var seenDot = false;
+    var seenExp = false;
+    if (_pos < _d.length && (_d[_pos] == '-' || _d[_pos] == '+')) {
+      _pos++;
+    }
+    while (_pos < _d.length) {
+      final c = _d[_pos];
+      final code = c.codeUnitAt(0);
+      if (code >= 0x30 && code <= 0x39) {
+        _pos++;
+      } else if (c == '.' && !seenDot && !seenExp) {
+        seenDot = true;
+        _pos++;
+      } else if ((c == 'e' || c == 'E') && !seenExp) {
+        seenExp = true;
+        _pos++;
+        if (_pos < _d.length && (_d[_pos] == '-' || _d[_pos] == '+')) {
+          _pos++;
+        }
+      } else {
+        break;
+      }
+    }
+    if (_pos == start) {
+      // No number where one was expected; consume one char to make progress.
+      _pos++;
+      return 0;
+    }
+    return double.tryParse(_d.substring(start, _pos)) ?? 0;
+  }
 }

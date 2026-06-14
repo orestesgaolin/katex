@@ -35,7 +35,9 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-017](T-017-math-widget.md) | Public Math widget API | M5 | done | T-016 |
 | [T-018](T-018-flutter-goldens.md) | Flutter golden tests + example app | M5 | done | T-002, T-017 |
 | [T-019](T-019-expansion.md) | Expand command/env coverage (ongoing) | M6 | todo (backlog) | T-014, T-018 |
-| [T-021](T-021-flutter-golden-fonts.md) | Flutter golden harness renders real glyphs | M5 | todo (backlog) | T-018 |
+| [T-021](T-021-flutter-golden-fonts.md) | Flutter golden harness renders real glyphs | M5 | done | T-018 |
+| [T-022](T-022-stretchy-geometry.md) | Real stretchy delimiters + surd (SvgPathNode geometry) | M6 | done | T-011, T-012, T-016 |
+| [T-023](T-023-reference-fixture-quality.md) | Regenerate oracle fixtures at crisp font size | M4 | done | T-002, T-014 |
 
 ## MVP status: ✅ COMPLETE
 
@@ -78,3 +80,7 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 - 2026-06-14 — T-016 painter **done** (verified: agrees with SVG serializer on every convention).
 - 2026-06-14 — T-017 `Math` widget **done** (verified: builds, sizes, error handling). T-018 goldens + example **done** (caveat: headless golden glyphs = tofu → T-021).
 - 2026-06-14 — ✅ **MVP COMPLETE.** Final: katex 259 tests / katex_flutter 49 / example 2 — all analyze clean. Dart + Flutter both render simple KaTeX. T-019 (expansion) + T-021 (golden fonts) backlogged.
+- 2026-06-14 — Committed (5166504). Continued backlog.
+- 2026-06-14 — T-021 **done**: "tofu" glyphs in Flutter goldens were a `FontLoader` family-name mismatch (needed the `packages/katex_flutter/`-prefixed family). **Real glyphs now render** in goldens (pixel-probe confirmed) + SVG cross-check. katex_flutter 59 tests.
+- 2026-06-14 — T-022 **done**: real stretchy surd geometry via load-bearing `SvgPathNode` (svgGeometry port + SVG `<path>` + Flutter `drawPath` + SVG-path-`d` parser). Oracle gate held 26/26; surd visual diff improved. katex 261 tests.
+- 2026-06-14 — User flagged reference PNGs look low-res vs browser KaTeX → **T-023 done**: root cause was rendering at the 16px browser default; regenerated fixtures at 48px (crisp, delimiters stretch correctly). Metrics unchanged (em-based) → gate still 26/26; updated svg-golden zoom 0.88→2.64. 261 tests.

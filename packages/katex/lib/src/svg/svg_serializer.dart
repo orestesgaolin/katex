@@ -239,34 +239,38 @@ class _SvgSerializer {
     }
   }
 
-  // --- SvgPath (stub) -------------------------------------------------------
+  // --- SvgPath (stretchy delimiters / sqrt surd) ----------------------------
 
   void _writeSvgPath(SvgPathNode node) {
-    // MVP stub: stretchy delimiter/accent geometry (KaTeX's svgGeometry table)
-    // is not resolved yet — that lands in M6. If an explicit `d` was supplied
-    // (alternatePath) we emit it inside a viewBox-scaled group; otherwise we
-    // emit an XML comment marking the slot so the output stays well-formed and
-    // the placeholder is visible to anyone inspecting it.
-    final path = node.alternatePath;
-    if (path == null || path.isEmpty) {
+    final path = node.pathData;
+    if (path.isEmpty) {
+      // No geometry resolved (unknown name): emit a harmless comment so the
+      // output stays well-formed.
       _buf.write(
-        '<!-- SvgPathNode "${_escapeText(node.pathName)}" '
-        '(stretchy geometry stubbed; see M6) -->',
+        '<!-- SvgPathNode "${_escapeText(node.pathName)}" (no path) -->',
       );
       return;
     }
+    // The node's ink spans box-y [-height, +depth] (top to bottom) and box-x
+    // [0, width]. We emit a nested <svg> whose viewBox is the path's units; the
+    // SVG renderer maps it onto the box via preserveAspectRatio (matching how
+    // KaTeX nests <svg> for stretchy geometry).
     final w = node.width * fontSize;
     final h = (node.height + node.depth) * fontSize;
     final y = -node.height * fontSize;
-    final vb = node.viewBox;
-    _buf.write(
-      '<svg x="0" y="${_num(y)}" '
-      'width="${_num(w)}" height="${_num(h)}"',
-    );
-    if (vb != null && vb.isNotEmpty) {
-      _buf.write(' viewBox="${_escapeAttr(vb)}" preserveAspectRatio="none"');
-    }
-    _buf.write('><path d="${_escapeAttr(path)}"/></svg>');
+    final par = switch (node.preserveAspectRatio) {
+      SvgPreserveAspectRatio.none => 'none',
+      // KaTeX uses "xMinYMin slice" for the surd: uniform cover, top-left
+      // anchored, overflow clipped to the box.
+      SvgPreserveAspectRatio.xMinYMinSlice => 'xMinYMin slice',
+    };
+    _buf
+      ..write('<svg x="0" y="${_num(y)}" ')
+      ..write('width="${_num(w)}" height="${_num(h)}" ')
+      ..write('viewBox="${_escapeAttr(node.viewBox)}" ')
+      ..write('preserveAspectRatio="$par">')
+      ..write('<path d="${_escapeAttr(path)}"/>')
+      ..write('</svg>');
   }
 
   // --- Font @font-face defs -------------------------------------------------

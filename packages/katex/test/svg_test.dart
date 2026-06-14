@@ -1,3 +1,4 @@
+import 'package:katex/katex.dart' show renderToSvg;
 import 'package:katex/src/box/box_node.dart';
 import 'package:katex/src/font/font_metrics.dart';
 import 'package:katex/src/font/font_types.dart';
@@ -197,17 +198,46 @@ void main() {
       );
     });
 
-    test('SvgPathNode without geometry emits a comment stub, stays valid', () {
+    test('SvgPathNode with geometry emits a scaled, sliced <path>', () {
       const node = SvgPathNode(
         pathName: 'sqrtMain',
+        pathData: 'M95,702 H400000 z',
+        viewBoxWidth: 400000,
+        viewBoxHeight: 1080,
+        width: 1,
+        height: 1,
+        preserveAspectRatio: SvgPreserveAspectRatio.xMinYMinSlice,
+      );
+      final svg = serializeBox(node);
+      final doc = XmlDocument.parse(svg);
+      final path = doc.findAllElements('path').single;
+      expect(path.getAttribute('d'), 'M95,702 H400000 z');
+      // Nested <svg> carries the viewBox + slice mapping.
+      final inner = doc.findAllElements('svg').firstWhere(
+        (e) => e.getAttribute('preserveAspectRatio') != null,
+      );
+      expect(inner.getAttribute('viewBox'), '0 0 400000 1080');
+      expect(inner.getAttribute('preserveAspectRatio'), 'xMinYMin slice');
+    });
+
+    test('SvgPathNode with empty geometry stays well-formed', () {
+      const node = SvgPathNode(
+        pathName: 'unknown',
+        pathData: '',
+        viewBoxWidth: 100,
+        viewBoxHeight: 100,
         width: 1,
         height: 1,
       );
       final svg = serializeBox(node);
-      // Still well-formed XML.
       XmlDocument.parse(svg);
       expect(svg, contains('SvgPathNode'));
-      expect(svg, contains('stubbed'));
+    });
+
+    test(r'renderToSvg(\sqrt{x}) emits a surd <path>; valid XML', () {
+      final svg = renderToSvg(r'\sqrt{x}');
+      final doc = XmlDocument.parse(svg);
+      expect(doc.findAllElements('path'), isNotEmpty);
     });
   });
 }

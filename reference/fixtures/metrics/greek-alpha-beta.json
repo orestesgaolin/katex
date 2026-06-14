@@ -120,8 +120,8 @@
   "id": "greek-alpha-beta",
   "katexVersion": "0.17.0",
   "pixelBox": {
-    "height": 21,
-    "width": 43.203
+    "height": 65,
+    "width": 129.609
   },
   "root": {
     "classes": [

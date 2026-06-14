@@ -153,8 +153,8 @@
   "id": "sup-x-2",
   "katexVersion": "0.17.0",
   "pixelBox": {
-    "height": 21,
-    "width": 16.328
+    "height": 65,
+    "width": 49
   },
   "root": {
     "classes": [

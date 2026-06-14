@@ -20,10 +20,11 @@ library;
 //
 // SCALE / ALIGNMENT (documented — this is the hard part):
 //   The reference PNGs are screenshots of the `.katex` element at
-//   devicePixelRatio 2. KaTeX renders at `1.21em` over a 16px root, i.e.
-//   1.21 * 16 = 19.36 CSS px/em -> 38.72 DEVICE px/em. Our serializer uses 44
+//   devicePixelRatio 2. KaTeX renders at `1.21em` over a 48px root (the
+//   reference harness FONT_SIZE_PX, see reference/generate_fixtures.mjs), i.e.
+//   1.21 * 48 = 58.08 CSS px/em -> 116.16 DEVICE px/em. Our serializer uses 44
 //   user-units/em (`defaultFontSize`), so we rasterize at
-//       zoom = 38.72 / 44 = 0.88
+//       zoom = 116.16 / 44 = 2.64
 //   to land in the same physical em scale. PNGs are then composited top-left
 //   onto a common white canvas and diffed.
 //
@@ -52,8 +53,9 @@ import 'package:katex/src/svg/svg_serializer.dart' show defaultFontSize;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-/// KaTeX device px/em: 1.21em * 16px root * DPR 2.
-const double _katexDevicePxPerEm = 1.21 * 16 * 2; // 38.72
+/// KaTeX device px/em: 1.21em * 48px root (reference FONT_SIZE_PX) * DPR 2.
+/// Keep in sync with `reference/generate_fixtures.mjs` FONT_SIZE_PX.
+const double _katexDevicePxPerEm = 1.21 * 48 * 2; // 116.16
 
 /// Rasterization zoom so our `defaultFontSize` user-units/em map to KaTeX's
 /// device px/em.

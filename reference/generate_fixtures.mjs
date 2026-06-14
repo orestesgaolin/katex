@@ -48,6 +48,11 @@ import puppeteer from "puppeteer";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const DPR = 2;                 // fixed devicePixelRatio for screenshots
+// Base CSS font-size for the host element. KaTeX scales math to ~1.21em of this.
+// Rendering at the browser-default 16px produced tiny, low-res fixtures (a fraction
+// was only ~28x70px). 48px gives crisp, browser-quality reference PNGs. Metrics are
+// em-based (from __renderToDomTree) and are unaffected by this value.
+const FONT_SIZE_PX = 48;
 const VIEWPORT = { width: 1200, height: 800 };
 const METRIC_PRECISION = 5;    // decimal places for em-unit metrics
 const PIXEL_PRECISION = 3;     // decimal places for pixel bounding boxes
@@ -171,7 +176,12 @@ function pageHtml(katexCss, renderedKatexHtml) {
     caret-color: transparent !important;
   }
   html, body { margin: 0; padding: 0; background: #ffffff; }
-  #host { display: inline-block; padding: 8px; background: #ffffff; }
+  #host {
+    display: inline-block;
+    padding: 8px;
+    background: #ffffff;
+    font-size: ${FONT_SIZE_PX}px;
+  }
 </style>
 </head>
 <body>

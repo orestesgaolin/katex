@@ -205,8 +205,8 @@
   "id": "sqrt-x",
   "katexVersion": "0.17.0",
   "pixelBox": {
-    "height": 21,
-    "width": 24.719
+    "height": 65,
+    "width": 74.156
   },
   "root": {
     "classes": [

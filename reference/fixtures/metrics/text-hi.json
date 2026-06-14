@@ -71,8 +71,8 @@
   "id": "text-hi",
   "katexVersion": "0.17.0",
   "pixelBox": {
-    "height": 21,
-    "width": 15.063
+    "height": 65,
+    "width": 45.188
   },
   "root": {
     "classes": [

@@ -243,8 +243,8 @@
   "id": "supsub-x-2-i",
   "katexVersion": "0.17.0",
   "pixelBox": {
-    "height": 21,
-    "width": 16.328
+    "height": 65,
+    "width": 49
   },
   "root": {
     "classes": [

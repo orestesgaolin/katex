@@ -59,8 +59,8 @@
   "id": "mathcal-l",
   "katexVersion": "0.17.0",
   "pixelBox": {
-    "height": 21,
-    "width": 11.828
+    "height": 65,
+    "width": 35.484
   },
   "root": {
     "classes": [

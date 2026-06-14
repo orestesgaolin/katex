@@ -59,8 +59,8 @@
   "id": "mathbb-r",
   "katexVersion": "0.17.0",
   "pixelBox": {
-    "height": 21,
-    "width": 12.922
+    "height": 65,
+    "width": 38.75
   },
   "root": {
     "classes": [

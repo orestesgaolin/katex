@@ -73,8 +73,13 @@ const List<GalleryEntry> kGallery = <GalleryEntry>[
     displayMode: true,
   ),
   GalleryEntry(
-    'cases',
+    'nablas',
     r'f(x) = \begin{cases} 1 & x > 0 \\ 0 & x \le 0 \end{cases}',
+    displayMode: true,
+  ),
+  GalleryEntry(
+    'cases',
+    r'\left\{ \begin{array}{l} \nabla\cdot\vec{E} = \rho \\ \nabla\times\vec{B} = \vec{J} \end{array} \right.',
     displayMode: true,
   ),
 ];
@@ -130,7 +135,7 @@ class _GalleryRow extends StatelessWidget {
               child: Text(
                 entry.tex,
                 style: const TextStyle(
-                  fontFamily: 'monospace',
+                  fontFamily: 'MesloLGS NF',
                   fontSize: 13,
                   color: Colors.black54,
                 ),

@@ -1,5 +1,7 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:katex/katex.dart';
@@ -15,6 +17,80 @@ ui.Picture _paintToPicture(BoxNode root, double fontSize) {
     boxSizePx(root, fontSize),
   );
   return recorder.endRecording();
+}
+
+/// Rasterizes [root] at [fontSize] by pumping a [CustomPaint] inside a
+/// [RepaintBoundary] (the proven path in this test environment) and returns the
+/// boundary's raw RGBA bytes plus dimensions.
+Future<({ByteData rgba, int width, int height})> _rasterize(
+  WidgetTester tester,
+  BoxNode root,
+  double fontSize, {
+  Color color = const Color(0xFF000000),
+}) async {
+  final size = boxSizePx(root, fontSize);
+  final w = size.width.ceil().clamp(1, 4096);
+  final h = size.height.ceil().clamp(1, 4096);
+  final key = GlobalKey();
+  await tester.pumpWidget(
+    Directionality(
+      textDirection: TextDirection.ltr,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: RepaintBoundary(
+          key: key,
+          child: ColoredBox(
+            color: const Color(0xFFFFFFFF),
+            child: SizedBox(
+              width: w.toDouble(),
+              height: h.toDouble(),
+              child: CustomPaint(
+                painter: KatexBoxPainter(
+                  root,
+                  fontSize: fontSize,
+                  color: color,
+                ),
+                size: Size(w.toDouble(), h.toDouble()),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  final boundary =
+      key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+  // Real async raster work (toImage/toByteData) must run outside the fake-async
+  // test zone, hence tester.runAsync.
+  final result = await tester.runAsync(() async {
+    final image = await boundary.toImage();
+    final bytes = (await image.toByteData())!;
+    return (rgba: bytes, width: image.width, height: image.height);
+  });
+  return result!;
+}
+
+/// Counts pixels that are not white (i.e. ink) in a rasterized region.
+int _inkCount(
+  ({ByteData rgba, int width, int height}) img, {
+  Rect? region,
+}) {
+  final r = region ??
+      Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
+  var count = 0;
+  for (var y = r.top.floor(); y < r.bottom.ceil() && y < img.height; y++) {
+    for (var x = r.left.floor(); x < r.right.ceil() && x < img.width; x++) {
+      final i = (y * img.width + x) * 4;
+      final red = img.rgba.getUint8(i);
+      final green = img.rgba.getUint8(i + 1);
+      final blue = img.rgba.getUint8(i + 2);
+      if (red < 250 || green < 250 || blue < 250) {
+        count++;
+      }
+    }
+  }
+  return count;
 }
 
 void main() {
@@ -87,6 +163,80 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('parseSvgPath', () {
+    test('parses a simple absolute path into a non-empty bounded Path', () {
+      final p = parseSvgPath('M0 0 H100 V50 z');
+      final b = p.getBounds();
+      expect(b.width, closeTo(100, 0.001));
+      expect(b.height, closeTo(50, 0.001));
+    });
+
+    test('handles relative, H/V, cubic, smooth and close commands', () {
+      // Mix of relative move/line, cubic, smooth-cubic, and close.
+      final p = parseSvgPath('m10 10 h20 v20 c5 5 10 5 15 0 s10 -5 15 0z');
+      expect(p.getBounds().isEmpty, isFalse);
+    });
+
+    test('a malformed string degrades gracefully (no throw, no hang)', () {
+      expect(() => parseSvgPath('garbage 1 2 3'), returnsNormally);
+      expect(() => parseSvgPath(''), returnsNormally);
+    });
+  });
+
+  group('SvgPathNode ink (surd + stretchy delimiter)', () {
+    testWidgets(r'\sqrt{x} draws surd/vinculum ink above the radicand', (
+      tester,
+    ) async {
+      final root = renderToBox(r'\sqrt{x}');
+      final img = await _rasterize(tester, root, 40);
+      // Total ink is non-trivial.
+      expect(_inkCount(img), greaterThan(0));
+      // The radicand 'x' sits on the baseline at x-height; the surd's vinculum
+      // (overbar) and the top of the diagonal live in the TOP band of the box,
+      // well above the radicand. There must be ink there — that ink can only
+      // come from the surd SvgPathNode, not the radicand glyph.
+      final topBand = Rect.fromLTWH(
+        0,
+        0,
+        img.width.toDouble(),
+        img.height * 0.18,
+      );
+      expect(
+        _inkCount(img, region: topBand),
+        greaterThan(0),
+        reason: 'expected surd/vinculum ink in the top band',
+      );
+    });
+
+    testWidgets(r'tall \left(...\right) draws a stacked-delimiter path', (
+      tester,
+    ) async {
+      // Deeply nested fraction forces a stacked (SVG-path) delimiter rather
+      // than a fixed glyph.
+      const tex = r'\left(\frac{a}{\frac{c}{\frac{d}{\frac{e}{f}}}}\right)';
+      final root = renderToBox(
+        tex,
+        options: const KatexOptions(displayMode: true),
+      );
+      final img = await _rasterize(tester, root, 40);
+      // The opening stretchy paren occupies the left ~38% of the box; its bowl
+      // reaches farthest left around the vertical MIDDLE. Assert ink in a left
+      // column across the middle band — there the only ink is the stacked-
+      // delimiter SvgPathNode (the inner fraction is centered to the right).
+      final leftStrip = Rect.fromLTWH(
+        0,
+        img.height * 0.35,
+        img.width * 0.22,
+        img.height * 0.30,
+      );
+      expect(
+        _inkCount(img, region: leftStrip),
+        greaterThan(0),
+        reason: 'expected stretchy delimiter (paren bowl) ink at mid-left',
+      );
+    });
   });
 
   test('shouldRepaint reacts to root / fontSize / color changes', () {

@@ -562,33 +562,67 @@ class SpanNode extends BoxNode {
       'd: ${depth.toStringAsFixed(4)})';
 }
 
-/// A stretchy SVG glyph placeholder (M6: stretchy delimiters/accents).
+/// How an [SvgPathNode]'s viewBox maps onto its box (KaTeX's SVG
+/// `preserveAspectRatio`).
 ///
-/// Mirrors KaTeX's `PathNode`/`SvgNode`. For the MVP this is mostly inert: it
-/// just holds a [pathName] (or explicit [alternatePath]), a [viewBox], and
-/// explicit dimensions so the box tree can carry the slot. The SVG serializer
-/// and Flutter painter will flesh out the actual geometry in M6.
+/// KaTeX uses two behaviors that matter for stretchy geometry:
+///  * [none] — non-uniform stretch: the viewBox is scaled independently in x
+///    and y to exactly fill the box (used by stacked delimiters, whose
+///    `viewBoxWidth`/`viewBoxHeight` are the real path extents).
+///  * [xMinYMinSlice] — uniform scale to *cover* the box, anchored top-left,
+///    overflow clipped (used by the `\sqrt` surd, whose viewBox is
+///    `0 0 400000 viewBoxHeight`: the path is drawn 400em wide and the box only
+///    shows the left `advanceWidth` of it — the long vinculum runs off-box and
+///    is clipped, exactly KaTeX's `width:"400em"` + `slice`).
+enum SvgPreserveAspectRatio {
+  /// Non-uniform stretch to fill the box exactly.
+  none,
+
+  /// Uniform scale to cover the box, top-left anchored, overflow clipped.
+  xMinYMinSlice,
+}
+
+/// A stretchy SVG path: the real geometry for `\sqrt` surds and stacked
+/// `\left…\right` / `\bigl…` delimiters.
+///
+/// Mirrors KaTeX's `PathNode` wrapped in an `SvgNode`/`SvgSpan`. The builder
+/// resolves the actual `d` string (from `svg_geometry.g.dart`) and the SVG's
+/// `viewBox`; the node also carries the placed box dimensions in **em**
+/// ([width]/[height]/[depth]) and a [preserveAspectRatio] hint so the SVG
+/// serializer and the Flutter painter agree on how to scale the viewBox onto
+/// the box. Backend-agnostic: it holds only data, no `dart:ui`.
+///
+/// Coordinate note: SVG path y grows *down* from the viewBox top. The box's
+/// ink spans from `-height` (top, above baseline) to `+depth` (bottom). The
+/// consumer maps viewBox-y `[0, viewBoxHeight]` onto box-y `[-height, +depth]`.
 @immutable
 class SvgPathNode extends BoxNode {
-  /// Creates an SVG path slot.
+  /// Creates an SVG path slot with resolved geometry.
   const SvgPathNode({
     required this.pathName,
+    required this.pathData,
+    required this.viewBoxWidth,
+    required this.viewBoxHeight,
     required this.width,
     required this.height,
     this.depth = 0,
-    this.viewBox,
-    this.alternatePath,
+    this.preserveAspectRatio = SvgPreserveAspectRatio.none,
   });
 
-  /// The named path in KaTeX's `svgGeometry` table.
+  /// The KaTeX path name (e.g. `sqrtMain`, `lparen`) — diagnostic / class hint.
   final String pathName;
 
-  /// An explicit `d` attribute overriding [pathName] (used by KaTeX for
-  /// `\sqrt`, `\phase`, and tall delimiters). `null` means use [pathName].
-  final String? alternatePath;
+  /// The resolved SVG path `d` attribute (the actual geometry to draw).
+  final String pathData;
 
-  /// The SVG viewBox string (`minX minY width height`), if known.
-  final String? viewBox;
+  /// The viewBox width in path units (KaTeX's 1000:1 viewBox scale).
+  final double viewBoxWidth;
+
+  /// The viewBox height in path units (KaTeX's 1000:1 viewBox scale).
+  final double viewBoxHeight;
+
+  /// How the viewBox maps onto the box (see [SvgPreserveAspectRatio]).
+  final SvgPreserveAspectRatio preserveAspectRatio;
 
   @override
   final double width;
@@ -599,9 +633,16 @@ class SvgPathNode extends BoxNode {
   @override
   final double depth;
 
+  /// The viewBox as the SVG `viewBox` attribute string (`0 0 w h`).
+  String get viewBox => '0 0 ${_n(viewBoxWidth)} ${_n(viewBoxHeight)}';
+
+  static String _n(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+
   @override
   String toString() =>
       'SvgPathNode($pathName, '
+      'vb: ${_n(viewBoxWidth)}x${_n(viewBoxHeight)}, '
       'w: ${width.toStringAsFixed(4)}, '
       'h: ${height.toStringAsFixed(4)}, '
       'd: ${depth.toStringAsFixed(4)})';

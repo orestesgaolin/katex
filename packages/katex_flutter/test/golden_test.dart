@@ -25,22 +25,25 @@
 /// `example/` app (run on a real device) is the primary path for confirming
 /// our rendering visually matches KaTeX.
 ///
-/// ## Fonts in the test harness — KNOWN LIMITATION (be honest)
-/// The KaTeX glyph fonts are declared as package fonts in `pubspec.yaml`, are
-/// bundled into the test asset bundle (verified: `rootBundle.load` returns the
-/// real bytes), and are additionally registered via [FontLoader] in
-/// [setUpAll]. **Despite this, glyphs do NOT render as real glyphs in the
-/// headless `flutter_test` harness — they fall back to solid filled "tofu"
-/// boxes.** Filled *rules* (fraction bars, sqrt lines, matrix/`\overline`
-/// rules) render correctly, but every character is a black rectangle.
+/// ## Fonts in the test harness — REAL GLYPHS (resolved in T-021)
+/// These goldens render **real KaTeX glyph shapes**, not "tofu" boxes. The
+/// earlier tofu fallback was a font-*registration* bug, not a flutter_test
+/// rasterisation limitation: the painter builds its [TextStyle] with
+/// `package: 'katex_flutter'`, which Flutter resolves to the prefixed family
+/// name `packages/katex_flutter/KaTeX_<Family>`. The old [setUpAll] registered
+/// each [FontLoader] under the *bare* family (`KaTeX_<Family>`), so the
+/// painter's prefixed lookup missed and fell back to solid rectangles. A
+/// pixel probe confirmed this directly: registered bare → an 'R' fills 100% of
+/// its bbox (tofu); registered under the prefixed name → the same 'R' fills
+/// only ~42% (real glyph with interior counters).
 ///
-/// This is a flutter_test font-rasterisation limitation, not a bug in our
-/// renderer: the same `Math` widget renders real KaTeX glyphs on a device/the
-/// example app. Consequently these goldens protect **layout/positioning and
-/// rule geometry** (each formula's ink boxes land in stable places), but NOT
-/// glyph shapes. The `example/` app is the primary path for confirming glyphs
-/// match KaTeX visually. Captured-as-is per the ticket; rendering real glyphs
-/// in the golden harness is tracked as a follow-up.
+/// The fix ([_loadKatexFonts]) registers every [FontLoader] under the exact
+/// prefixed family name the painter selects, so real glyphs rasterise in the
+/// headless harness. These goldens therefore now guard **glyph shapes** in
+/// addition to layout/positioning and rule geometry. (Filled rules — fraction
+/// bars, sqrt/overline lines — always rendered fine.) A separate
+/// `svg_glyph_golden_test.dart` independently proves glyph shapes via the SVG
+/// rasterisation path as a cross-check.
 ///
 /// Regenerate goldens after an intentional rendering change with:
 /// ```sh
@@ -120,8 +123,19 @@ const double _fontSize = 32;
 /// dimensions independent of each formula's intrinsic size.
 const Size _canvas = Size(360, 200);
 
+/// The package name the painter passes as `TextStyle.package`. Flutter
+/// prefixes the resolved font family with `packages/<package>/`, so the
+/// [FontLoader] must register under that same prefixed name (see doc above).
+const String _katexFlutterPackage = 'katex_flutter';
+
 /// Loads every bundled `KaTeX_*` font family into the test font collection so
 /// real glyphs render rather than fallback boxes.
+///
+/// Crucially each [FontLoader] is registered under the **package-prefixed**
+/// family name `packages/katex_flutter/KaTeX_<Family>` — the exact name the
+/// painter's `TextStyle(package: 'katex_flutter')` resolves to. Registering
+/// under the bare `KaTeX_<Family>` (as before T-021) misses that lookup and
+/// rasterises solid "tofu" boxes.
 Future<void> _loadKatexFonts() async {
   // Families and their asset files, matching this package's pubspec.yaml.
   const families = <String, List<String>>{
@@ -158,7 +172,8 @@ Future<void> _loadKatexFonts() async {
   };
 
   for (final entry in families.entries) {
-    final loader = FontLoader(entry.key);
+    // Register under the package-prefixed name the painter actually selects.
+    final loader = FontLoader('packages/$_katexFlutterPackage/${entry.key}');
     for (final asset in entry.value) {
       loader.addFont(_loadAsset(asset));
     }
