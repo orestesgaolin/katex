@@ -5,6 +5,7 @@
 // Generated with jaspr_builder
 
 import 'package:jaspr/server.dart';
+import 'package:site/components/flutter_view.dart' as _flutter_view;
 import 'package:site/components/katex_js.dart' as _katex_js;
 import 'package:site/app.dart' as _app;
 
@@ -27,6 +28,10 @@ import 'package:site/app.dart' as _app;
 ServerOptions get defaultServerOptions => ServerOptions(
   clientId: 'main.client.dart.js',
   clients: {
+    _flutter_view.FlutterView: ClientTarget<_flutter_view.FlutterView>(
+      'flutter_view',
+      params: __flutter_viewFlutterView,
+    ),
     _katex_js.KatexJs: ClientTarget<_katex_js.KatexJs>(
       'katex_js',
       params: __katex_jsKatexJs,
@@ -35,6 +40,11 @@ ServerOptions get defaultServerOptions => ServerOptions(
   styles: () => [..._app.App.styles],
 );
 
+Map<String, Object?> __flutter_viewFlutterView(_flutter_view.FlutterView c) => {
+  'tex': c.tex,
+  'displayMode': c.displayMode,
+  'fontSize': c.fontSize,
+};
 Map<String, Object?> __katex_jsKatexJs(_katex_js.KatexJs c) => {
   'tex': c.tex,
   'displayMode': c.displayMode,

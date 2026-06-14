@@ -1,12 +1,12 @@
 /// The comparison site root.
 ///
 /// Layout: a header, a legend, then for every category a heading followed by
-/// the comparison rows. Each row shows the TeX source plus two live renders —
-/// **KaTeX JS** (ground truth, hydrated client-side) and **katex Dart SVG**
-/// (pre-rendered at build time). The third renderer, **katex_flutter**, is a
-/// single full-height Flutter-web iframe pinned beside the list (one Flutter
-/// engine for the whole page — see README for the trade-off), whose rows use
-/// the same `kRowHeight` and ordering so they line up.
+/// the comparison rows. Each row shows the TeX source plus **three inline
+/// renders of the same expression**, side by side in one grid:
+/// **KaTeX JS** (ground truth, hydrated client-side), **katex Dart SVG**
+/// (pre-rendered at build time) and **katex_flutter** (rendered inline via
+/// Flutter web *multi-view* embedding — one engine, one view per row; see
+/// `components/flutter_view.dart` + `web/flutter_embed.js`).
 library;
 
 import 'package:jaspr/dom.dart';
@@ -15,8 +15,7 @@ import 'package:jaspr/jaspr.dart';
 import 'components/comparison_row.dart';
 import 'examples.dart';
 
-/// Heading height (px) used in both the HTML list and the Flutter gallery so
-/// the two stay vertically aligned.
+/// Category heading height (px).
 const int kHeadingHeight = 64;
 
 class App extends StatelessComponent {
@@ -34,7 +33,7 @@ class App extends StatelessComponent {
           strong([.text('katex')]),
           .text(' Dart → SVG · '),
           strong([.text('katex_flutter')]),
-          .text(' Math widget (Flutter web).'),
+          .text(' Math widget (Flutter web, inline per row).'),
         ]),
         div(classes: 'legend', [
           span(classes: 'badge mode', [.text('display')]),
@@ -44,38 +43,21 @@ class App extends StatelessComponent {
         ]),
       ]),
       div(classes: 'compare', [
-        // Left: the JS + Dart-SVG comparison list.
-        div(classes: 'list-col', [
-          div(classes: 'col-headings', [
-            div(classes: 'col-head source-head', [.text('TeX source')]),
-            div(classes: 'col-head', [.text('KaTeX JS')]),
-            div(classes: 'col-head', [.text('katex Dart SVG')]),
+        div(classes: 'col-headings', [
+          div(classes: 'col-head source-head', [.text('TeX source')]),
+          div(classes: 'col-head', [.text('KaTeX JS')]),
+          div(classes: 'col-head', [.text('katex Dart SVG')]),
+          div(classes: 'col-head', [.text('katex_flutter')]),
+        ]),
+        for (final ExampleGroup group in kGroups)
+          .fragment([
+            h2(
+              classes: 'group-heading',
+              styles: Styles(height: kHeadingHeight.px),
+              [.text(group.title)],
+            ),
+            for (final Example ex in group.examples) ComparisonRow(ex),
           ]),
-          for (final ExampleGroup group in kGroups)
-            .fragment([
-              h2(
-                classes: 'group-heading',
-                styles: Styles(height: kHeadingHeight.px),
-                [.text(group.title)],
-              ),
-              for (final Example ex in group.examples)
-                div(
-                  styles: Styles(minHeight: kRowHeight.px),
-                  [ComparisonRow(ex)],
-                ),
-            ]),
-        ]),
-        // Right: a single Flutter-web engine rendering the whole gallery.
-        div(classes: 'flutter-col', [
-          div(classes: 'col-head flutter-head', [.text('katex_flutter')]),
-          iframe(
-            const [],
-            src: 'flutter/index.html',
-            loading: MediaLoading.lazy,
-            classes: 'flutter-frame',
-            attributes: const {'title': 'katex_flutter gallery'},
-          ),
-        ]),
       ]),
     ]);
   }
@@ -83,7 +65,7 @@ class App extends StatelessComponent {
   @css
   static List<StyleRule> get styles => [
         css('.page').styles(
-          maxWidth: 1400.px,
+          maxWidth: 1600.px,
           padding: Padding.all(24.px),
           margin: Margin.symmetric(horizontal: Unit.auto),
         ),
@@ -120,39 +102,17 @@ class App extends StatelessComponent {
             backgroundColor: const Color('#fff0d6'),
           ),
         ]),
-        // Two-panel compare layout: list + sticky flutter frame.
-        css('.compare').styles(
-          display: Display.flex,
-          flexDirection: FlexDirection.row,
-          alignItems: AlignItems.start,
-          gap: Gap.all(16.px),
-        ),
-        css('.list-col').styles(
-          minWidth: Unit.zero,
-          flex: const Flex(grow: 1, shrink: 1, basis: Unit.zero),
-        ),
-        css('.flutter-col', [
-          css('&').styles(
-            position: Position.sticky(top: 8.px),
-            width: 340.px,
-            flex: const Flex(grow: 0, shrink: 0),
-          ),
-          css('.flutter-frame').styles(
-            width: 100.percent,
-            height: 80.vh,
-            border: Border.all(color: const Color('#ddd'), width: 1.px),
-            radius: BorderRadius.circular(6.px),
-            backgroundColor: const Color('#fff'),
-          ),
-        ]),
-        // Column heading strip above the list.
+        // The whole comparison region.
+        css('.compare').styles(minWidth: Unit.zero),
+        // Column heading strip above the list — FOUR columns aligned with the
+        // per-row grid below (TeX | KaTeX JS | Dart SVG | katex_flutter).
         css('.col-headings').styles(
           display: Display.grid,
           padding: Padding.symmetric(vertical: 8.px),
           gridTemplate: GridTemplate(
             columns: GridTracks([
               GridTrack.repeat(
-                const TrackRepeat(3),
+                const TrackRepeat(4),
                 [GridTrack(TrackSize.fr(1))],
               ),
             ]),
@@ -167,7 +127,6 @@ class App extends StatelessComponent {
           fontSize: 0.85.rem,
           backgroundColor: const Color('#f3f3f3'),
         ),
-        css('.flutter-head').styles(margin: Margin.only(bottom: 8.px)),
         css('.group-heading').styles(
           display: Display.flex,
           margin: Margin.zero,
@@ -177,16 +136,29 @@ class App extends StatelessComponent {
           alignItems: AlignItems.center,
           fontSize: 1.3.rem,
         ),
-        // One comparison row.
+        // One comparison row — a 4-column grid aligned with `.col-headings`:
+        // TeX source | KaTeX JS | katex Dart SVG | katex_flutter.
         css('.cmp-row', [
           css('&').styles(
+            display: Display.grid,
             padding: Padding.symmetric(vertical: 8.px),
             border: Border.only(
               bottom: BorderSide(color: const Color('#eee'), width: 1.px),
             ),
+            alignItems: AlignItems.center,
+            gridTemplate: GridTemplate(
+              columns: GridTracks([
+                GridTrack.repeat(
+                  const TrackRepeat(4),
+                  [GridTrack(TrackSize.fr(1))],
+                ),
+              ]),
+            ),
+            gap: Gap.all(8.px),
           ),
           css('.cmp-source').styles(
-            margin: Margin.only(bottom: 6.px),
+            margin: Margin.zero,
+            overflow: Overflow.hidden,
             fontSize: 0.85.rem,
           ),
           css('.cmp-source code').styles(
@@ -200,21 +172,9 @@ class App extends StatelessComponent {
             ]),
             backgroundColor: const Color('#f6f8fa'),
           ),
-          css('.cmp-cells').styles(
-            display: Display.grid,
-            gridTemplate: GridTemplate(
-              columns: GridTracks([
-                GridTrack.repeat(
-                  const TrackRepeat(2),
-                  [GridTrack(TrackSize.fr(1))],
-                ),
-              ]),
-            ),
-            gap: Gap.all(8.px),
-          ),
           css('.cmp-cell').styles(
             display: Display.flex,
-            minHeight: 56.px,
+            minHeight: kCellHeight.px,
             padding: Padding.all(8.px),
             radius: BorderRadius.circular(4.px),
             overflow: Overflow.auto,
@@ -222,18 +182,25 @@ class App extends StatelessComponent {
             alignItems: AlignItems.center,
             backgroundColor: const Color('#fafafa'),
           ),
+          // The Flutter host cell: give the embedded view explicit bounds so
+          // the Flutter engine has a size to lay out into.
+          css('.flutter-cell').styles(
+            padding: Padding.zero,
+            overflow: Overflow.hidden,
+            backgroundColor: const Color('#fff'),
+          ),
+          css('.flutter-host').styles(
+            width: 100.percent,
+            height: kCellHeight.px,
+          ),
         ]),
         css('.render-error').styles(
           color: const Color('#cc0000'),
           fontSize: 0.75.rem,
         ),
-        // Stack columns on narrow screens.
-        css.media(MediaQuery.screen(maxWidth: 900.px), [
-          css('.compare').styles(flexDirection: FlexDirection.column),
-          css('.flutter-col').styles(
-            position: Position.static,
-            width: 100.percent,
-          ),
-        ]),
       ];
 }
+
+/// Fixed render-cell height (px). The Flutter host div uses this so the
+/// embedded multi-view engine has explicit bounds.
+const int kCellHeight = 96;

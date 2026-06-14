@@ -25,11 +25,7 @@ plugins:
     version: ^0.7.1
     diagnostics:
       prefer_html_components: true
-      # Disabled: the comparison page embeds the Flutter gallery via jaspr's
-      # `iframe(...)`, whose `children` is a required *leading positional*
-      # argument — it cannot satisfy this rule. Re-enabled everywhere else by
-      # there being no other positional-children components in this app.
-      sort_children_last: false
+      sort_children_last: true
       styles_ordering: true
 
 # Uncomment the following section to enable or disable additional rules.

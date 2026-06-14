@@ -23,6 +23,10 @@ void main() {
       // Vendored KaTeX JS — exposes the global `katex` object used by the
       // KatexJs client component on hydrate. `defer` keeps it non-blocking.
       script(src: 'katex/katex.min.js', defer: true),
+      // Boots the embedded katex_flutter engine ONCE in multi-view mode and
+      // exposes `window.__katexFlutter` (add/remove view). Each FlutterView
+      // @client component attaches one Flutter view to its row's host div.
+      script(src: 'flutter_embed.js', defer: true),
     ],
     styles: [
       css('html, body').styles(

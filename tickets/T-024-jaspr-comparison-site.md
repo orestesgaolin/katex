@@ -2,6 +2,27 @@
 
 **Milestone:** M7 (demo/docs site)  **Status:** review  **Depends on:** T-012, T-017, T-002
 
+## Rework (user feedback, 2026-06-14)
+The first build put the Flutter renderer in a SEPARATE sticky/scrollable iframe panel beside
+the list. The user wants the Flutter widget as a **true inline 4th column per row**: each row =
+`TeX source | KaTeX JS | katex Dart SVG | katex_flutter (Math)`, the Flutter cell sitting right
+next to the others for that same expression.
+
+Implement via **Flutter web multi-view embedding** (one engine, many views) — NOT 68 iframes:
+- `flutter_host` runs in multi-view mode: bootstrap with
+  `engineInitializer.initializeEngine({multiViewEnabled: true})` → `app = await runApp()`, then
+  `app.addView({hostElement, initialData})` returns a viewId; `app.removeView(viewId)` to clean up.
+- `main.dart` uses `runWidget` with a multi-view app (map over `platformDispatcher.views`, wrap
+  each in a `View` widget) and reads per-view `initialData` (tex + displayMode + fontSize) via
+  `dart:ui_web` `views.getInitialData(viewId)` to build `Math(tex, ...)` for that view.
+- Jaspr: the row's 4th column is a host `<div>`; a `@client` component, on hydrate, calls the
+  exposed JS to `addView` into that div with the row's tex. Load/initialize the engine ONCE.
+- Drop the sticky scrollable panel; integrate the column into `comparison_row.dart` so all four
+  cells share the row and baseline.
+- Fallback ONLY if multi-view genuinely can't be made to work after real effort: lazy per-row
+  iframes (IntersectionObserver, instantiate on scroll-into-view) — document the choice. Prefer
+  multi-view.
+
 ## Goal
 A new **static [Jaspr](https://jaspr.site) site** that renders, **side by side for each
 example**, the three renderers so they can be visually compared at a glance:

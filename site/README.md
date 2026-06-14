@@ -1,23 +1,36 @@
 # KaTeX renderer comparison site
 
 A static [Jaspr](https://jaspr.site) site that renders every expression in the
-comparison gallery **three ways, side by side**, so divergences (spacing,
-delimiters, accents, fonts) are obvious at a glance:
+comparison gallery **four columns per row, side by side**, so divergences
+(spacing, delimiters, accents, fonts) are obvious at a glance. Each row is:
 
-1. **KaTeX JS** — the original `katex.min.js`, rendered in the browser. Ground truth.
-2. **`katex` (pure Dart) → SVG** — `renderToSvg(tex)` output, inlined as `<svg>`.
-3. **`katex_flutter`** — the `Math` widget, via an embedded Flutter-web app.
+```
+TeX source | KaTeX JS | katex Dart → SVG | katex_flutter
+```
+
+1. **TeX source** — the LaTeX input (with `display` / `approx` badges).
+2. **KaTeX JS** — the original `katex.min.js`, rendered in the browser. Ground truth.
+3. **`katex` (pure Dart) → SVG** — `renderToSvg(tex)` output, inlined as `<svg>`.
+4. **`katex_flutter`** — the `Math` widget, rendered **inline per row** by an
+   embedded Flutter-web engine running in **multi-view** mode (one engine, one
+   Flutter `View` per row — see below).
 
 ## Quick start
 
 ```sh
-cd site
+cd site/flutter_host && flutter build web --base-href /flutter/ && cd ..
+rm -rf web/flutter && cp -r flutter_host/build/web web/flutter   # see "Building the Flutter column"
 jaspr serve          # dev server with hot reload → http://localhost:8080
 ```
 
-Then open <http://localhost:8080> in a browser. The KaTeX-JS column hydrates
-client-side; the Dart-SVG column is pre-rendered; the Flutter column loads in an
-iframe.
+Then open <http://localhost:8080> **in a real browser**. The KaTeX-JS column
+hydrates client-side; the Dart-SVG column is pre-rendered at build time; the
+katex_flutter column boots a single CanvasKit/WASM Flutter engine and attaches
+one Flutter view to each row's host `<div>`.
+
+> The Flutter multi-view engine needs a live browser with WebGL/CanvasKit. Open
+> the **served** URL (`jaspr serve`, or any static server over `build/jaspr/`) —
+> a bare `file://` open will not fully boot the engine.
 
 To produce the static site:
 
@@ -28,13 +41,13 @@ jaspr build          # → build/jaspr/  (index.html + assets, fully static)
 
 > The Flutter web app is **not** built by `jaspr build` — build it separately
 > (below) and copy its output into `web/flutter/` *before* running
-> `jaspr serve`/`jaspr build`, so the iframe has something to load.
+> `jaspr serve`/`jaspr build`, so the engine has something to load.
 
 ## Building the Flutter column
 
-The third column is a small Flutter-web app at [`flutter_host/`](flutter_host)
-that renders the whole gallery as a scrollable column of `Math` widgets (it
-depends on `packages/katex_flutter` via path and bundles the KaTeX glyph fonts).
+The fourth column is a small Flutter-web app at [`flutter_host/`](flutter_host)
+running in **multi-view** mode (it depends on `packages/katex_flutter` via path
+and bundles the KaTeX glyph fonts).
 
 ```sh
 cd site/flutter_host
@@ -44,22 +57,22 @@ cd ..
 rm -rf web/flutter && cp -r flutter_host/build/web web/flutter
 ```
 
-`web/flutter/` is then served by Jaspr as a static directory and embedded via a
-single `<iframe src="flutter/index.html">`.
+`web/flutter/` is then served by Jaspr as a static directory; the site boots the
+engine once via [`web/flutter_embed.js`](web/flutter_embed.js) and attaches one
+view per row.
 
 ## How each column is produced
 
 | Column | Package | Mechanism |
 | --- | --- | --- |
+| TeX source | — | Plain text + badges in `lib/components/comparison_row.dart`. |
 | KaTeX JS | vendored `katex.min.js` | `@client` component (`lib/components/katex_js.dart`) calls `katex.render(tex, host, {displayMode, throwOnError:false})` on hydrate via `js_interop`. |
 | katex Dart SVG | `package:katex` (path dep) | `lib/components/dart_svg.dart` calls `renderToSvg(tex)` **at build time** (static mode) and inlines the `<svg>` with `RawText`. No client JS. |
-| katex_flutter | `package:katex_flutter` (via `flutter_host/`) | A single Flutter-web app rendering the whole gallery, embedded as one iframe. |
+| katex_flutter | `package:katex_flutter` (via `flutter_host/`) | One Flutter-web engine in multi-view mode; an `@client` `FlutterView` component attaches one Flutter view per row via `window.__katexFlutter.add(...)`. |
 
-The example set lives in `lib/examples.dart` (grouped by category) and is
-mirrored verbatim into `flutter_host/lib/examples.dart` so all three columns
-share the same expressions in the same order. **If you edit one, copy it to the
-other** (`cp lib/examples.dart flutter_host/lib/examples.dart`) and rebuild the
-Flutter app.
+The example set lives in `lib/examples.dart` (grouped by category). The Flutter
+host no longer needs its own copy — each view's expression is passed at runtime
+as `initialData` (see below), so there is a single source of truth.
 
 ### Vendored assets
 
@@ -77,32 +90,73 @@ families used by **both** the KaTeX-JS output and the inlined Dart SVGs.
 > optimisation only — `package:katex` itself is unchanged and still emits
 > self-contained SVGs.
 
-## Flutter embedding: chosen mechanism & trade-offs
+## Flutter embedding: multi-view (one engine, one view per row)
 
-**Chosen: one Flutter-web app for the whole gallery, embedded as a single
-iframe**, laid out beside the JS/SVG list. The Flutter gallery mirrors the same
-category headings and per-row heights (`kHeadingHeight` = 64 px,
-`kRowHeight` = 120 px) and the same example order, so its rows line up with the
-KaTeX-JS / Dart-SVG rows next to it.
+The katex_flutter column uses **Flutter web multi-view embedding**: a *single*
+Flutter engine boots once for the whole page, and the site attaches **one
+Flutter `View` per comparison row** directly into that row's host `<div>` in the
+Jaspr DOM. There are **no iframes**. This is what makes the Flutter cell a true
+inline 4th column — it sits in the same CSS grid row as the TeX / JS / SVG cells
+for the same expression.
 
-Why this and not the alternatives:
+### How the wiring fits together
 
-- **One iframe = one Flutter engine for the entire page.** Reliable and
-  comparatively light. The engine boots once and paints all rows.
-- **One iframe per row (rejected):** each iframe is a *separate Flutter engine*
-  (megabytes of runtime + a CanvasKit/WASM download each). With ~56 rows this is
-  prohibitively heavy and flaky; would need aggressive lazy-loading to even
-  start.
-- **Flutter multi-view embedding into the Jaspr DOM (rejected for now):** the
-  tightest integration (real per-cell Flutter views in the grid), but more
-  fragile to wire up across the Jaspr/Flutter bootstrap boundary than a plain
-  iframe. The iframe is the pragmatic, robust choice.
+1. **Dart side — `flutter_host/lib/main.dart`.** `main()` calls `runWidget(...)`
+   (not `runApp`) with a multi-view root. The root listens to
+   `PlatformDispatcher.onMetricsChanged` (fired when views are added/removed),
+   maps every entry of `platformDispatcher.views` to a `View(view: ...)` widget,
+   and renders them with `ViewCollection`. For each view it reads the per-view
+   config via `dart:ui_web` `ui_web.views.getInitialData(viewId)` — a JS object
+   `{tex, displayMode, fontSize}` — and renders `Math(tex, ...)` from
+   `package:katex_flutter`, centered on white, with an `onError` fallback. Each
+   view is sized by its host `<div>` (the Jaspr `.flutter-host` cell sets the
+   bounds).
 
-**Trade-off of the single iframe:** the Flutter column is isolated in its own
-scrolling document, so it does not share the outer page's scroll. The row
-heights are matched so corresponding rows align horizontally, but on very long
-scrolls the two can drift; the iframe has its own scrollbar. This is the
-deliberate cost of the reliable single-engine approach.
+2. **JS bootstrap (once) — `web/flutter_embed.js`.** Loaded once from the
+   document head (see `lib/main.server.dart`). It fetches the generated
+   `flutter/flutter_bootstrap.js` (which defines the loader **and** sets
+   `_flutter.buildConfig` — pinned to the SDK + this build's `engineRevision`),
+   strips its trailing auto `_flutter.loader.load(...)` call so the engine does
+   not boot in single-view mode, then drives the loader itself:
+
+   ```js
+   _flutter.loader.load({
+     config: { entrypointBaseUrl: "flutter/", canvasKitBaseUrl: "flutter/canvaskit/" },
+     onEntrypointLoaded: async (init) => {
+       const appRunner = await init.initializeEngine({ multiViewEnabled: true });
+       const app = await appRunner.runApp();
+       window.__katexFlutter = {
+         add: (hostEl, data) => app.addView({ hostElement: hostEl, initialData: data }), // -> viewId
+         remove: (id) => app.removeView(id),
+       };
+     },
+   });
+   ```
+
+   `add(hostElement, {tex, displayMode, fontSize})` returns a `Promise<viewId>`.
+   Registrations made before the engine is ready are queued and flushed on
+   ready. Fetching the generated bootstrap (rather than hardcoding buildConfig)
+   keeps this robust across `flutter build web` rebuilds.
+
+3. **Jaspr bridge — `lib/components/flutter_view.dart`.** A `@client` `FlutterView`
+   component renders an empty fixed-size host `<div class="flutter-host">`. On
+   hydrate (client only) it calls
+   `window.__katexFlutter.add(hostDiv, {tex, displayMode, fontSize})` via
+   `js_interop` (`package:universal_web`, guarded by `kIsWeb`), passing the row's
+   tex/displayMode. It stores the returned `viewId` and calls `remove(viewId)` on
+   dispose so hot-reload / re-hydration don't leak views.
+
+### Trade-offs
+
+- **One engine, many views** — far lighter than one iframe (engine) per row, and
+  unlike a single shared iframe the Flutter cells live in the page's own DOM and
+  scroll with it, so they stay aligned with the other three columns.
+- **Needs a live browser** — the engine downloads CanvasKit/WASM and uses WebGL,
+  so the column only renders when the site is *served* and opened in a real
+  browser (verified headlessly via Chromium with software WebGL). A `file://`
+  open will not boot it.
+- **`engineRevision`** comes from the freshly-built `flutter_bootstrap.js`; just
+  rebuild the Flutter app (above) whenever you bump the Flutter SDK.
 
 ## Known approximations
 
@@ -117,20 +171,21 @@ marked approx — they should match KaTeX JS.
 ```
 site/
   pubspec.yaml                 # jaspr; depends on ../packages/katex (path)
-  analysis_options.yaml        # jaspr_lints (sort_children_last disabled — see file)
+  analysis_options.yaml        # jaspr_lints
   web/
     katex/                     # vendored katex.min.css/js + fonts
+    flutter_embed.js           # boots the Flutter engine (multi-view) + bridge
     flutter/                   # `flutter build web` output (generated; see above)
   lib/
-    main.server.dart           # Document(head: KaTeX css/js), static entrypoint
+    main.server.dart           # Document(head: KaTeX css/js + flutter_embed.js)
     main.client.dart           # ClientApp() — hydrates @client components
-    app.dart                   # page layout + styles
+    app.dart                   # page layout + styles (4-column grid)
     examples.dart              # the comparison example set (grouped by category)
     components/
-      comparison_row.dart      # one example → TeX source + JS + SVG cells
+      comparison_row.dart      # one example → TeX source + JS + SVG + Flutter cells
       katex_js.dart            # @client KaTeX-JS interop component
       dart_svg.dart            # build-time renderToSvg + inline SVG
+      flutter_view.dart        # @client component → addView() per row (multi-view)
   flutter_host/                # Flutter-web app for the katex_flutter column
-    lib/main.dart              # scrollable Math-widget gallery
-    lib/examples.dart          # mirror of ../lib/examples.dart
+    lib/main.dart              # multi-view root (runWidget + View per row)
 ```

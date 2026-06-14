@@ -1,150 +1,161 @@
-/// Flutter-web host for the comparison site's third column (T-024).
+/// Flutter-web host for the comparison site's `katex_flutter` column (T-024).
 ///
-/// Renders the whole comparison gallery as a single scrollable column of
-/// `Math` widgets — one Flutter engine for the entire page, embedded in the
-/// Jaspr site via one `<iframe src="flutter/index.html">`. A single engine is
-/// far more reliable and lighter than one iframe (engine) per row.
+/// **Multi-view embedding.** This app runs as a single Flutter web engine in
+/// *multi-view* mode (`runWidget` + a multi-view root), with **one `View` per
+/// comparison row**. The Jaspr site boots the engine once and, for each row,
+/// calls `app.addView({hostElement, initialData})` to attach a Flutter view to
+/// that row's host `<div>`. Each view renders a single `Math` widget for that
+/// row's expression — so the Flutter cell sits truly inline beside the
+/// TeX / KaTeX-JS / Dart-SVG cells for the same expression.
 ///
-/// Layout mirrors the Jaspr list exactly so the iframe's rows line up with the
-/// KaTeX-JS / Dart-SVG rows beside it: each category heading is
-/// [kHeadingHeight] tall and each example row is [kRowHeight] tall, in the same
-/// order as `examples.dart`.
+/// Per-view configuration (`{tex, displayMode, fontSize}`) is passed as
+/// `initialData` at `addView` time and read back here via
+/// `dart:ui_web` `ui_web.views.getInitialData(viewId)`.
 library;
 
-import 'package:flutter/material.dart';
+import 'dart:js_interop';
+import 'dart:ui' show FlutterView, PlatformDispatcher;
+import 'dart:ui_web' as ui_web;
+
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:katex_flutter/katex_flutter.dart';
 
-import 'examples.dart';
+void main() => runWidget(const _MultiViewKatexApp());
 
-/// Heading row height (px) — must match `app.dart`'s `kHeadingHeight`.
-const double kHeadingHeight = 64;
-
-/// Example row height (px) — must match `comparison_row.dart`'s `kRowHeight`.
-const double kRowHeight = 120;
-
-void main() => runApp(const FlutterHostApp());
-
-class FlutterHostApp extends StatelessWidget {
-  const FlutterHostApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'katex_flutter gallery',
-      theme: ThemeData(scaffoldBackgroundColor: Colors.white),
-      home: const GalleryPage(),
-    );
-  }
+/// The shape of the per-view `initialData` object passed from JS at
+/// `addView({ hostElement, initialData })` time.
+extension type _ViewData._(JSObject _) implements JSObject {
+  external String? get tex;
+  external bool? get displayMode;
+  external double? get fontSize;
 }
 
-class GalleryPage extends StatelessWidget {
-  const GalleryPage({super.key});
+/// A multi-view root that renders one [View] per registered Flutter view and
+/// rebuilds whenever views are added or removed.
+///
+/// This mirrors the documented `MultiViewApp` pattern: it listens to
+/// [PlatformDispatcher.onMetricsChanged] (fired when views are added/removed)
+/// and maps every entry of `platformDispatcher.views` to a [View] widget
+/// wrapping a [KatexView] built from that view's `initialData`.
+class _MultiViewKatexApp extends StatefulWidget {
+  const _MultiViewKatexApp();
 
   @override
-  Widget build(BuildContext context) {
-    final List<Widget> children = <Widget>[];
-    for (final ExampleGroup group in kGroups) {
-      children.add(_HeadingRow(group.title));
-      for (final Example ex in group.examples) {
-        children.add(_ExampleRow(ex));
+  State<_MultiViewKatexApp> createState() => _MultiViewKatexAppState();
+}
+
+class _MultiViewKatexAppState extends State<_MultiViewKatexApp> {
+  Map<Object, Widget> _views = <Object, Widget>{};
+
+  @override
+  void initState() {
+    super.initState();
+    final PlatformDispatcher dispatcher = WidgetsBinding.instance.platformDispatcher;
+    dispatcher.onMetricsChanged = _onMetricsChanged;
+    _updateViews();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.platformDispatcher.onMetricsChanged = null;
+    super.dispose();
+  }
+
+  void _onMetricsChanged() {
+    final bool didChange = _updateViews();
+    if (didChange) {
+      // onMetricsChanged can fire during a frame; defer setState if so.
+      if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+        setState(() {});
+      } else {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
       }
     }
-    return Scaffold(
-      body: ListView(
-        padding: EdgeInsets.zero,
-        children: children,
+  }
+
+  /// Rebuilds [_views] from the current set of registered views. Returns true
+  /// if the set of views changed.
+  bool _updateViews() {
+    final Map<Object, Widget> newViews = <Object, Widget>{};
+    bool changed = false;
+    for (final FlutterView view in WidgetsBinding.instance.platformDispatcher.views) {
+      final Widget existing = _views[view.viewId] ?? _buildView(view);
+      if (!_views.containsKey(view.viewId)) changed = true;
+      newViews[view.viewId] = existing;
+    }
+    if (newViews.length != _views.length) changed = true;
+    _views = newViews;
+    return changed;
+  }
+
+  Widget _buildView(FlutterView view) {
+    final JSAny? raw = ui_web.views.getInitialData(view.viewId);
+    final _ViewData? data = raw as _ViewData?;
+    return View(
+      view: view,
+      child: KatexView(
+        tex: data?.tex ?? '',
+        displayMode: data?.displayMode ?? false,
+        fontSize: data?.fontSize ?? 22,
       ),
     );
   }
-}
-
-class _HeadingRow extends StatelessWidget {
-  const _HeadingRow(this.title);
-
-  final String title;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: kHeadingHeight,
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFF222222), width: 2),
-        ),
-      ),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF1A1A1A),
-        ),
-      ),
-    );
+    return ViewCollection(views: _views.values.toList(growable: false));
   }
 }
 
-class _ExampleRow extends StatelessWidget {
-  const _ExampleRow(this.example);
+/// Renders a single [Math] expression centered on white, sized to its host
+/// element (the host `<div>` in the Jaspr row sets the bounds).
+class KatexView extends StatelessWidget {
+  const KatexView({
+    required this.tex,
+    required this.displayMode,
+    required this.fontSize,
+    super.key,
+  });
 
-  final Example example;
+  /// The LaTeX math source for this row.
+  final String tex;
+
+  /// Whether to typeset as display math.
+  final bool displayMode;
+
+  /// Math font size in logical pixels.
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: kRowHeight),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEE)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          // Mirror the TeX-source label so rows are identifiable in isolation.
-          Text(
-            example.tex,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 11,
-              color: Color(0xFF57606A),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Container(
-              alignment: Alignment.center,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFAFAFA),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Math(
-                  example.tex,
-                  displayMode: example.displayMode,
-                  fontSize: 22,
-                  onError: (BuildContext context, Object error) => Text(
-                    'error: $error',
-                    style: const TextStyle(
-                      color: Color(0xFFCC0000),
-                      fontSize: 11,
-                    ),
-                  ),
+    return WidgetsApp(
+      debugShowCheckedModeBanner: false,
+      color: const Color(0xFFFFFFFF),
+      builder: (BuildContext context, Widget? child) {
+        return DefaultTextStyle(
+          style: const TextStyle(color: Color(0xFF1A1A1A)),
+          child: Container(
+            color: const Color(0xFFFFFFFF),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.all(8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Math(
+                tex,
+                displayMode: displayMode,
+                fontSize: fontSize,
+                onError: (BuildContext context, Object error) => Text(
+                  'error: $error',
+                  style: const TextStyle(color: Color(0xFFCC0000), fontSize: 11),
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
