@@ -52,6 +52,18 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-035](T-035-publishing-prep.md) | Publishing prep: pub.dev metadata + GH issue button + Pages deploy | M7 | done | T-024 |
 | [T-036](T-036-approximations-and-flutter-clip.md) | Fix \overrightarrow arrowhead + array rules; un-tag stale approx; Flutter cfrac clip/offset | M6/M7 | done | T-034 |
 | [T-037](T-037-supported-functions-page.md) | "Supported functions" reference subpage (mirror katex.org/docs/supported) | M7 | done | T-024 |
+| [T-038](T-038-port-full-macros.md) | Port full KaTeX macros.ts (~245 builtin macros) | M8 | done | T-007 |
+| [T-039](T-039-port-functions-no-box-changes.md) | Port remaining functions (html@mathml, mathchoice, phantom/lap/smash, arrows, def-family, …) | M8 | done | T-038 |
+| [T-040](T-040-port-enclose-functions.md) | Port enclose group (\boxed \cancel \colorbox …) + math-mode `$` switch | M8 | done | T-039 |
+
+## Symbol/function coverage (M8, 2026-06-15)
+Goal: "support remaining katex symbols." Probe = every KaTeX function+macro command name run through
+`renderToBox`, counting "Undefined control sequence". **UNDEFINED 338 → 21.** The residual 21 are all
+intentionally unsupported: grep-noise (`\x`, `\bracefrac`, `\brackfrac`), context-only (CD-env arrows,
+`\newline`), internal helpers (`\current@color`, `\global{let,future,long}`, `\abovefrac`, `\atopfrac`),
+image loading (`\includegraphics`), KaTeX's own TODO (`\varcoppa`), and niche legacy (`\phase`, `\d`,
+`\t`, `\sc`, `\sl`, `\textasciitilde`). Gates held throughout: oracle 26/26, 304 (katex) + 62
+(katex_flutter) tests green, analyze clean.
 
 ## Side-by-side findings (user review, 2026-06-14)
 Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`
