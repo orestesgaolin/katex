@@ -43,6 +43,7 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-026](T-026-sqrt-index-placement.md) | Fix `\sqrt[n]` index placement | M6 | done | T-011, T-020, T-022 |
 | [T-027](T-027-glyph-skew-offset.md) | Glyph skew offset misplaced slanted glyphs (prime overlap + clip) | M6 | done | T-012, T-016 |
 | [T-028](T-028-site-flutter-fonts.md) | Site Flutter column wrong font (asset base 404) | M7 | done | T-024 |
+| [T-029](T-029-site-flutter-inline-perrow.md) | Site Flutter column: per-row single-view iframes (glyphs + alignment) | M7 | done | T-024, T-028 |
 
 ## Side-by-side findings (user review, 2026-06-14)
 Built a KaTeX-JS vs Dart-SVG comparison (puppeteer). **Matches KaTeX closely:** `\frac`, `\sum`
