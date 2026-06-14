@@ -11,55 +11,35 @@ TeX source | KaTeX JS | katex Dart → SVG | katex_flutter
 1. **TeX source** — the LaTeX input (with `display` / `approx` badges).
 2. **KaTeX JS** — the original `katex.min.js`, rendered in the browser. Ground truth.
 3. **`katex` (pure Dart) → SVG** — `renderToSvg(tex)` output, inlined as `<svg>`.
-4. **`katex_flutter`** — the `Math` widget, rendered by its **own per-row
-   single-view Flutter-web engine** in a lazy `<iframe>` (one expression per
-   iframe — see below).
+4. **`katex_flutter`** — the `Math` widget, embedded with **`jaspr_flutter_embed`**
+   (one shared Flutter engine, one embedded view per cell).
 
 ## Quick start
 
 ```sh
-cd site/flutter_host && flutter build web --base-href /flutter/ && cd ..
-rm -rf web/flutter && cp -r flutter_host/build/web web/flutter   # see "Building the Flutter column"
-jaspr serve          # dev server with hot reload → http://localhost:8080
+cd site
+flutter pub get
+jaspr serve          # dev server → http://localhost:8080
 ```
 
-Then open <http://localhost:8080> **in a real browser**. The KaTeX-JS column
-hydrates client-side; the Dart-SVG column is pre-rendered at build time; each
-katex_flutter cell boots a Flutter engine on demand (lazy iframe).
+Open <http://localhost:8080> **in a real browser**. The KaTeX-JS column hydrates
+client-side; the Dart-SVG column is pre-rendered at build time; the
+katex_flutter column boots one Flutter engine (CanvasKit/WASM) and mounts a view
+per cell.
 
-> The Flutter engine needs a live browser with WebGL/CanvasKit. Open the
-> **served** URL (`jaspr serve`, or any static server over `build/jaspr/`) — a
-> bare `file://` open will not fully boot the engine.
+> The Flutter engine needs a live browser with WebGL/CanvasKit, so the
+> katex_flutter column only renders when the site is *served* and opened in a
+> real browser — a headless screenshot or `file://` open will not boot it.
 
-To produce the static site:
+Static build:
 
 ```sh
 cd site
-jaspr build          # → build/jaspr/  (index.html + assets, fully static)
+jaspr build          # → build/jaspr/  (includes the compiled Flutter engine)
 ```
 
-> The Flutter web app is **not** built by `jaspr build` — build it separately
-> (below) and copy its output into `web/flutter/` *before* running
-> `jaspr serve`/`jaspr build`, so the iframes have something to load.
-
-## Building the Flutter column
-
-The fourth column is a tiny **single-expression** Flutter-web app at
-[`flutter_host/`](flutter_host) (it depends on `packages/katex_flutter` via path
-and bundles the KaTeX glyph fonts). `flutter_host/lib/main.dart` reads `tex`,
-`display` and `fontSize` from the page's query string and renders **one**
-centered `Math` widget.
-
-```sh
-cd site/flutter_host
-flutter pub get
-flutter build web --base-href /flutter/      # served under /flutter/ in the site
-cd ..
-rm -rf web/flutter && cp -r flutter_host/build/web web/flutter
-```
-
-`web/flutter/` is then served by Jaspr as a static directory; each comparison
-row embeds it as `<iframe src="flutter/index.html?tex=…&display=…&fontSize=22">`.
+`jaspr build` / `jaspr serve` compile the embedded Flutter automatically (via
+`jaspr: flutter: embedded`) — there is **no** separate `flutter build web` step.
 
 ## How each column is produced
 
@@ -68,85 +48,71 @@ row embeds it as `<iframe src="flutter/index.html?tex=…&display=…&fontSize=2
 | TeX source | — | Plain text + badges in `lib/components/comparison_row.dart`. |
 | KaTeX JS | vendored `katex.min.js` | `@client` component (`lib/components/katex_js.dart`) calls `katex.render(tex, host, {displayMode, throwOnError:false})` on hydrate via `js_interop`. |
 | katex Dart SVG | `package:katex` (path dep) | `lib/components/dart_svg.dart` calls `renderToSvg(tex)` **at build time** (static mode) and inlines the `<svg>` with `RawText`. No client JS. |
-| katex_flutter | `package:katex_flutter` (via `flutter_host/`) | A per-row lazy `<iframe>` (`comparison_row.dart`) loads `flutter/index.html?tex=…`; `flutter_host` runs a single-view engine rendering that one expression. |
+| katex_flutter | `package:katex_flutter` + `jaspr_flutter_embed` | `@client` `FlutterCell` (`lib/components/flutter_cell.dart`) renders `FlutterEmbedView(widget: MathCell(tex, …))`. One shared engine, one view per cell. |
 
 The example set lives in `lib/examples.dart` (grouped by category).
 
-### Vendored assets
+## Flutter embedding: one shared engine via jaspr_flutter_embed
 
-`web/katex/` holds `katex.min.css`, `katex.min.js` and `fonts/`, copied
-unmodified from `reference/node_modules/katex/dist`. The stylesheet is loaded
-from `<head>` (see `lib/main.server.dart`); it supplies the `KaTeX_*` `@font-face`
-families used by **both** the KaTeX-JS output and the inlined Dart SVGs.
+The site uses `jaspr_flutter_embed` (`jaspr: flutter: embedded` in `pubspec.yaml`,
+plus `web/flutter_bootstrap.js` with the `{{flutter_js}}` / `{{flutter_build_config}}`
+templates). Each row's 4th cell is an `@client` `FlutterCell` that renders a
+`FlutterEmbedView` hosting the `MathCell` Flutter widget
+(`lib/widgets/math_cell.dart`). All cells share **one** Flutter engine — Jaspr
+adds a view per `FlutterEmbedView`.
 
-> **SVG font note:** `renderToSvg` normally emits a self-contained SVG that
-> re-embeds the entire KaTeX font set (~470 KB) per call. Inlining 60+ of those
-> would make the page tens of MB. Because this page already loads
-> `katex.min.css` (same `KaTeX_*` families), `dart_svg.dart` strips the
-> per-SVG `<defs><style>@font-face…</style></defs>` block, shrinking each
-> inlined SVG to <1 KB with identical rendering. This is a site-level
-> optimisation only — `package:katex` itself is unchanged.
+`MathCell` (and its `package:flutter` imports) is pulled in **web-only** through a
+conditional import (`lib/components/math_cell_builder.dart` →
+`_web.dart` / `_io.dart`), so the static server prerender never touches Flutter.
 
-## Flutter embedding: one single-view engine per row (lazy iframes)
+### Why one shared engine (not iframes, not a tall gallery iframe)
 
-Each katex_flutter cell is its **own** `<iframe>` running a **single-view**
-Flutter engine (`runApp`) that renders just that row's expression
-(`flutter/index.html?tex=…`). The iframe is absolutely positioned to fill its
-grid cell, so it lines up with the TeX / JS / SVG cells **by construction** —
-the iframe *is* the cell. Iframes use `loading="lazy"`, so only engines near the
-viewport instantiate as you scroll.
+Earlier iterations:
 
-### Why per-row single-view (not multi-view, not one big iframe)
+- **One CanvasKit engine per row, via `<iframe>`**: rendered every glyph and
+  aligned per-row, but ~68 engines exhaust the browser's WebGL-context limit —
+  cells blank out ("disappear") on click/scroll as contexts get evicted.
+- **One full-height gallery iframe**: stable, but its internal layout drifts out
+  of vertical alignment with the DOM list.
 
-Two earlier approaches each failed one requirement:
+`jaspr_flutter_embed` uses a **single** engine with one embedded view per cell:
+no WebGL-context exhaustion (no disappear-on-click), and each view is its own
+grid cell so it lines up by construction.
 
-- **Multi-view** (one engine, one `View` per row, no iframe): CanvasKit in
-  multi-view renders a class of math symbols as **missing-glyph boxes** even
-  though the app font covers them — `\oint`/`\bigcup` (KaTeX_Size2), `\cdot`
-  (U+22C5), and the angle/ceil/floor delimiters `⟨⟩⌈⌉⌊⌋`. The same expressions
-  render correctly in a single-view engine. Preloading fonts, forcing CanvasKit,
-  and `fontFamilyFallback` did not fix it.
-- **One full-height iframe** rendering the whole gallery (single-view, glyphs
-  OK): the iframe's internal layout drifts out of vertical alignment with the
-  DOM list (two independent layout engines), so rows stop lining up partway down.
-
-**Per-row single-view iframes** fix both: single-view → every glyph renders;
-one iframe per grid cell → exact alignment, no height-matching needed. The cost
-is many engines, bounded by `loading="lazy"` (only near-viewport rows boot).
-Each iframe loads `flutter/index.html` (engine assets cached after the first),
-which also gives it the correct `<base href="/flutter/">` so the bundled
-`KaTeX_*` fonts load from `flutter/assets/`.
-
-> **Needs a live browser** — the engines download CanvasKit/WASM and use WebGL,
-> so the column only renders when the site is *served* and opened in a real
-> browser. A `file://` open will not boot them.
+> Note: the embed uses Flutter web multi-view under the hood. A previous
+> *hand-rolled* multi-view attempt showed missing-glyph boxes for some
+> KaTeX_Size symbols (`\oint`, `\bigcup`, angle/ceil/floor delimiters); that was
+> traced to a hand-rolled bootstrap that didn't load `FontManifest`. This path
+> uses the standard `{{flutter_build_config}}` bootstrap (correct font loading) —
+> verify the glyph-heavy rows (Delimiters, Big operators) render in a real
+> browser.
 
 ## Known approximations
 
 Rows that hit a current `katex` MVP approximation (e.g. some sized delimiters /
 `\oint` / `\overrightarrow` / `array` rules) are tagged with an `approx` badge so
 an expected JS-vs-Dart difference is not mistaken for a bug. Accents (`\hat`,
-`\vec`, `\widehat`, …) and `\sqrt[n]` were fixed and are **not** marked approx —
-they should match KaTeX JS.
+`\vec`, `\widehat`, …) and `\sqrt[n]` are fixed and **not** marked approx.
 
 ## Project layout
 
 ```
 site/
-  pubspec.yaml                 # jaspr; depends on ../packages/katex (path)
-  analysis_options.yaml        # jaspr_lints
+  pubspec.yaml                 # jaspr (flutter: embedded); deps: katex, katex_flutter, jaspr_flutter_embed
   web/
-    katex/                     # vendored katex.min.css/js + fonts
-    flutter/                   # `flutter build web` output (generated; see above)
+    katex/                     # vendored katex.min.css/js + fonts (for the JS + SVG columns)
+    flutter_bootstrap.js       # {{flutter_js}} {{flutter_build_config}}
   lib/
     main.server.dart           # Document(head: KaTeX css/js)
     main.client.dart           # ClientApp() — hydrates @client components
     app.dart                   # page layout + styles (4-column grid)
     examples.dart              # the comparison example set (grouped by category)
+    widgets/
+      math_cell.dart           # the embedded Flutter widget (web-only): Math(tex)
     components/
-      comparison_row.dart      # one example → TeX source + JS + SVG + Flutter-iframe cells
+      comparison_row.dart      # one example → TeX source + JS + SVG + Flutter cells
       katex_js.dart            # @client KaTeX-JS interop component
       dart_svg.dart            # build-time renderToSvg + inline SVG
-  flutter_host/                # single-EXPRESSION Flutter-web app (reads ?tex= from the URL)
-    lib/main.dart              # runApp — one centered Math widget for the query's tex
+      flutter_cell.dart        # @client FlutterEmbedView host
+      math_cell_builder*.dart  # web/io conditional builder for MathCell
 ```

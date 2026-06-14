@@ -185,26 +185,14 @@ class App extends StatelessComponent {
             alignItems: AlignItems.center,
             backgroundColor: const Color('#fafafa'),
           ),
-          // Flutter cell: relatively positioned so its iframe can fill the row
-          // height (set by the JS/SVG cells) without forcing its own intrinsic
-          // 150px iframe height onto the row.
+          // Flutter cell: the jaspr_flutter_embed host fills the cell so the
+          // embedded view sizes to the row height (set by the JS/SVG cells).
           css('.flutter-cell', [
-            css('&').styles(
-              position: const Position.relative(),
-              padding: Padding.zero,
-              overflow: Overflow.hidden,
-            ),
-            css('iframe').styles(
-              position: const Position.absolute(
-                top: Unit.zero,
-                left: Unit.zero,
-                right: Unit.zero,
-                bottom: Unit.zero,
-              ),
+            css('& > *').styles(
               width: 100.percent,
-              height: 100.percent,
-              border: Border.unset,
+              minHeight: kRowMinHeight.px,
             ),
+            css('.flutter-loading').styles(minHeight: kRowMinHeight.px),
           ]),
         ]),
         css('.render-error').styles(

@@ -15,9 +15,6 @@ reference/node_modules/
 **/test/.diffs/
 **/failures/
 
-# Jaspr site: generated Flutter web build output (rebuild via site/README.md)
-site/web/flutter/
-
 # Editor / OS
 .DS_Store
 .idea/

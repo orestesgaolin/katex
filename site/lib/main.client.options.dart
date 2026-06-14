@@ -6,6 +6,7 @@
 
 import 'package:jaspr/client.dart';
 
+import 'package:site/components/flutter_cell.dart' deferred as _flutter_cell;
 import 'package:site/components/katex_js.dart' deferred as _katex_js;
 
 /// Default [ClientOptions] for use with your Jaspr project.
@@ -26,6 +27,13 @@ import 'package:site/components/katex_js.dart' deferred as _katex_js;
 /// ```
 ClientOptions get defaultClientOptions => ClientOptions(
   clients: {
+    'flutter_cell': ClientLoader(
+      (p) => _flutter_cell.FlutterCell(
+        tex: p['tex'] as String,
+        displayMode: p['displayMode'] as bool,
+      ),
+      loader: _flutter_cell.loadLibrary,
+    ),
     'katex_js': ClientLoader(
       (p) => _katex_js.KatexJs(
         tex: p['tex'] as String,

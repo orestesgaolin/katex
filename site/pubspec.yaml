@@ -7,16 +7,27 @@ environment:
   sdk: ^3.11.0
 
 dependencies:
+  flutter:
+    sdk: flutter
   jaspr: ^0.23.1
+  jaspr_flutter_embed: ^0.4.11
   katex:
     path: ../packages/katex
+  katex_flutter:
+    path: ../packages/katex_flutter
   universal_web: ^1.1.1
 
 dev_dependencies:
   build_runner: ^2.10.0
   build_web_compilers: ^4.8.0
+  flutter_test:
+    sdk: flutter
   jaspr_builder: ^0.23.1
   lints: ^5.0.0
 
 jaspr:
   mode: static
+  flutter: embedded
+
+flutter:
+  uses-material-design: true

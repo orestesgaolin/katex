@@ -1,11 +1,10 @@
 /// One comparison row: TeX source + three live renders side by side —
 /// **KaTeX JS**, **katex Dart SVG**, and **katex_flutter**.
 ///
-/// The `katex_flutter` cell is its OWN lazy `<iframe>` running a single-view
-/// Flutter engine for just this expression (`flutter/index.html?tex=...`). One
-/// engine per row keeps every glyph rendering (CanvasKit multi-view drops some)
-/// and lines the cell up by construction (the iframe IS the grid cell), unlike a
-/// single tall gallery iframe which drifts out of alignment with the DOM list.
+/// The `katex_flutter` cell is a `FlutterCell` — a `jaspr_flutter_embed`
+/// `FlutterEmbedView` hosting the `MathCell` widget. All cells share one Flutter
+/// engine (one embedded view each), which avoids the per-iframe WebGL-context
+/// exhaustion that blanked cells on click.
 library;
 
 import 'package:jaspr/dom.dart';
@@ -13,11 +12,10 @@ import 'package:jaspr/jaspr.dart';
 
 import '../examples.dart';
 import 'dart_svg.dart';
+import 'flutter_cell.dart';
 import 'katex_js.dart';
 
-/// Minimum per-row cell height (px). Rows grow taller for tall expressions; the
-/// Flutter iframe is absolutely positioned so it fills the row without forcing
-/// its own intrinsic height.
+/// Minimum per-row cell height (px). Rows grow taller for tall expressions.
 const int kRowMinHeight = 72;
 
 /// A four-cell comparison row for one [example]:
@@ -27,12 +25,6 @@ class ComparisonRow extends StatelessComponent {
 
   /// The example to render.
   final Example example;
-
-  String get _flutterSrc {
-    final tex = Uri.encodeQueryComponent(example.tex);
-    return 'flutter/index.html?tex=$tex'
-        '&display=${example.displayMode}&fontSize=22';
-  }
 
   @override
   Component build(BuildContext context) {
@@ -56,14 +48,9 @@ class ComparisonRow extends StatelessComponent {
       div(classes: 'cmp-cell', [
         DartSvg(example.tex, displayMode: example.displayMode),
       ]),
-      // Column 4: katex_flutter — its own single-view engine in a lazy iframe.
+      // Column 4: katex_flutter via jaspr_flutter_embed (one shared engine).
       div(classes: 'cmp-cell flutter-cell', [
-        iframe(
-          const [],
-          src: _flutterSrc,
-          loading: MediaLoading.lazy,
-          attributes: {'title': 'katex_flutter: ${example.tex}'},
-        ),
+        FlutterCell(tex: example.tex, displayMode: example.displayMode),
       ]),
     ]);
   }
