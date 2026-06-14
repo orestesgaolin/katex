@@ -196,7 +196,7 @@ class Parser {
       }
 
       final ParseNode node;
-      if (funcName == r'\abovefrac') {
+      if (funcName == r'\\abovefrac') {
         node = callFunction(funcName, <ParseNode>[
           numerNode,
           body[overIndex],
