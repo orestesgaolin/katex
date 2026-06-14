@@ -47,6 +47,44 @@ class App extends StatelessComponent {
           .text(' known MVP approximation — expected JS/Dart difference, not a bug.'),
         ]),
       ]),
+      section(classes: 'intro', [
+        p([
+          strong([.text('katex')]),
+          .text(' is a fresh Dart port of '),
+          a(
+            [.text('KaTeX')],
+            href: 'https://katex.org',
+            attributes: const {'target': '_blank', 'rel': 'noopener'},
+          ),
+          .text('. It parses LaTeX math into a backend-agnostic '),
+          strong([.text('box tree')]),
+          .text(', then renders that one tree two ways: to '),
+          strong([.text('SVG with no Flutter dependency')]),
+          .text(' (CLI / server / web / SSR) and as a '),
+          strong([.text('Flutter widget')]),
+          .text('. This page renders every example three ways — original '
+              'KaTeX (JS), our Dart → SVG, and the Flutter widget — side by '
+              'side, so divergences are obvious at a glance.'),
+        ]),
+        p([
+          .text('How it differs from existing packages: tools like '),
+          em([.text('flutter_math_fork')]),
+          .text(' bolt rendering directly onto Flutter render objects and '
+              "can't run outside Flutter. "),
+          strong([.text('katex')]),
+          .text(' instead keeps a shared, backend-agnostic box tree as its '
+              'core, so the exact same layout drives both the no-Flutter SVG '
+              'output and the Flutter widget — and box dimensions are verified '
+              'against original KaTeX.'),
+        ]),
+        p(classes: 'intro-links', [
+          a(
+            [.text('★ View on GitHub')],
+            href: 'https://github.com/orestesgaolin/katex',
+            attributes: const {'target': '_blank', 'rel': 'noopener'},
+          ),
+        ]),
+      ]),
       // SITE-2: live editor above the comparison table.
       const Editor(),
       div(classes: 'compare', [
@@ -238,6 +276,30 @@ class App extends StatelessComponent {
             textDecoration: const TextDecoration(
               line: TextDecorationLine.underline,
             ),
+          ),
+        ]),
+        // Intro / "what is this" section above the editor.
+        css('.intro', [
+          css('&').styles(
+            maxWidth: 920.px,
+            margin: Margin.only(bottom: 20.px),
+          ),
+          css('p').styles(
+            margin: Margin.only(bottom: 8.px),
+            color: const Color('#333'),
+            fontSize: 0.95.rem,
+          ),
+          css('a').styles(color: const Color('#1a4fa0')),
+          css('.intro-links').styles(margin: Margin.only(top: 4.px)),
+          css('.intro-links a').styles(
+            display: Display.inlineBlock,
+            padding: Padding.symmetric(horizontal: 12.px, vertical: 6.px),
+            radius: BorderRadius.circular(6.px),
+            color: const Color('#ffffff'),
+            backgroundColor: const Color('#24292f'),
+            fontSize: 0.9.rem,
+            fontWeight: FontWeight.bold,
+            textDecoration: const TextDecoration(line: TextDecorationLine.none),
           ),
         ]),
       ];
