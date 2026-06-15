@@ -199,8 +199,11 @@ class _OversampledMathState extends State<_OversampledMath> {
       return;
     }
 
-    // 1× display extent (matches the JS/SVG columns).
-    final display = boxSizePx(box, widget.fontSize);
+    // 1× display extent (matches the JS/SVG columns), PLUS an ink-overflow pad
+    // on every side so the offscreen raster doesn't clip glyph/SVG ink that
+    // overflows the metric box (bold-glyph overshoot, brace SVG, deep \cfrac
+    // denominators). Mirrors the SVG serializer's content pad.
+    final display = boxSizePxPadded(box, widget.fontSize);
     if (display.width <= 0 || display.height <= 0) {
       _error = null;
       _image?.dispose();
@@ -218,7 +221,8 @@ class _OversampledMathState extends State<_OversampledMath> {
       box,
       fontSize: widget.fontSize * scale,
       color: const Color(0xFF000000),
-    ).paint(canvas, boxSizePx(box, widget.fontSize * scale));
+      inkPadEm: kInkOverflowPadEm,
+    ).paint(canvas, boxSizePxPadded(box, widget.fontSize * scale));
     final picture = recorder.endRecording();
     final image = picture.toImageSync(
       (display.width * scale).ceil(),

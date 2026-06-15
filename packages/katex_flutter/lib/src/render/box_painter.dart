@@ -44,6 +44,24 @@ Size boxSizePx(BoxNode root, double fontSize) {
   return Size(w < 0 ? 0 : w, h < 0 ? 0 : h);
 }
 
+/// Ink-overflow pad (em) added on every side of a rendered box, matching the
+/// SVG serializer's content pad. Glyph/SVG ink can extend past the metric box
+/// (bold-glyph overshoot, brace SVG, deep `\cfrac` denominators); without this
+/// margin a parent (or an offscreen raster) clips it.
+const double kInkOverflowPadEm = 0.08;
+
+/// [boxSizePx] grown by [kInkOverflowPadEm] on every side. Use this as the
+/// canvas/widget size whenever painting with `KatexBoxPainter(inkPadEm: …)`.
+Size boxSizePxPadded(
+  BoxNode root,
+  double fontSize, {
+  double padEm = kInkOverflowPadEm,
+}) {
+  final s = boxSizePx(root, fontSize);
+  final p = padEm * fontSize;
+  return Size(s.width + 2 * p, s.height + 2 * p);
+}
+
 /// Paints a [BoxNode] tree onto a [Canvas].
 ///
 /// Pass the root [BoxNode], a [fontSize] (logical pixels per em — e.g. 20–44),
@@ -54,6 +72,7 @@ class KatexBoxPainter extends CustomPainter {
     this.root, {
     required this.fontSize,
     this.color = const Color(0xFF000000),
+    this.inkPadEm = 0.0,
   });
 
   /// The root of the box tree to paint.
@@ -65,14 +84,22 @@ class KatexBoxPainter extends CustomPainter {
   /// The base color used when no enclosing [SpanNode] sets a color.
   final Color color;
 
+  /// Extra padding (in em) added on every side before painting, so glyph/SVG
+  /// ink that overflows the metric box (bold-glyph overshoot, brace SVG, deep
+  /// `\cfrac` denominators) is not clipped. Mirrors the SVG serializer's
+  /// content-overflow pad. The painter shifts its origin by `inkPadEm * fontSize`;
+  /// the caller must size the canvas to [boxSizePxPadded] to match.
+  final double inkPadEm;
+
   // Cache of laid-out TextPainters keyed by (text, family, variant, size, rgb)
   // so repeated glyphs (and repaints with the same content) reuse layout work.
   final Map<_GlyphKey, TextPainter> _glyphCache = {};
 
   @override
   void paint(Canvas canvas, Size size) {
-    final baselineY = root.height * fontSize;
-    _paintNode(canvas, root, 0, baselineY, color);
+    final pad = inkPadEm * fontSize;
+    final baselineY = root.height * fontSize + pad;
+    _paintNode(canvas, root, pad, baselineY, color);
   }
 
   /// Paints [node] with its baseline at [baselineY] (px from the top) and its
@@ -567,7 +594,8 @@ class KatexBoxPainter extends CustomPainter {
   bool shouldRepaint(covariant KatexBoxPainter oldDelegate) {
     return !identical(oldDelegate.root, root) ||
         oldDelegate.fontSize != fontSize ||
-        oldDelegate.color != color;
+        oldDelegate.color != color ||
+        oldDelegate.inkPadEm != inkPadEm;
   }
 }
 

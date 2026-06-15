@@ -115,12 +115,21 @@ class Math extends StatelessWidget {
       return _buildError(context, error);
     }
 
-    final size = boxSizePx(box, fontSizePx);
+    // Size to the box PLUS an ink-overflow pad on every side, and paint with
+    // the matching origin offset, so glyph/SVG ink that overflows the metric
+    // box (bold-glyph overshoot, brace SVG, deep \cfrac denominators) is not
+    // clipped by a parent. Mirrors the SVG serializer's content pad.
+    final size = boxSizePxPadded(box, fontSizePx);
     return SizedBox.fromSize(
       size: size,
       child: CustomPaint(
         size: size,
-        painter: KatexBoxPainter(box, fontSize: fontSizePx, color: baseColor),
+        painter: KatexBoxPainter(
+          box,
+          fontSize: fontSizePx,
+          color: baseColor,
+          inkPadEm: kInkOverflowPadEm,
+        ),
       ),
     );
   }
