@@ -42,6 +42,8 @@ void main() {
       script(src: 'flutter_bootstrap.js', async: true),
     ],
     styles: [
+      // Shared site font with the sibling mermaid comparison site (Inter).
+      css.import('https://fonts.googleapis.com/css?family=Inter:400,500,600,700'),
       css('html, body').styles(
         width: 100.percent,
         minHeight: 100.vh,
@@ -49,9 +51,9 @@ void main() {
         margin: .zero,
         color: const Color('#1a1a1a'),
         fontFamily: const FontFamily.list([
+          FontFamily('Inter'),
           FontFamily('-apple-system'),
           FontFamily('Segoe UI'),
-          FontFamily('Roboto'),
           FontFamilies.sansSerif,
         ]),
       ),

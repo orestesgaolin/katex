@@ -30,7 +30,15 @@ class App extends StatelessComponent {
     return div(classes: 'page', [
       const SiteNav(active: SiteRoute.comparison),
       header(classes: 'site-header', [
-        h1([.text('KaTeX renderer comparison')]),
+        div(classes: 'header-top', [
+          h1([.text('KaTeX renderer comparison')]),
+          a(
+            classes: 'gh-link',
+            [.text('GitHub ↗')],
+            href: 'https://github.com/orestesgaolin/katex',
+            attributes: const {'target': '_blank', 'rel': 'noopener noreferrer'},
+          ),
+        ]),
         p(classes: 'subtitle', [
           .text('Every expression rendered three ways, side by side: '),
           strong([.text('KaTeX JS')]),
@@ -77,11 +85,19 @@ class App extends StatelessComponent {
               'output and the Flutter widget — and box dimensions are verified '
               'against original KaTeX.'),
         ]),
+        p([
+          .text('That portable core is reused elsewhere: '),
+          strong([.text('mermaid dart')]),
+          .text(', a pure-Dart port of mermaid.js, renders the TeX math labels '
+              'in its diagrams with '),
+          strong([.text('katex')]),
+          .text('.'),
+        ]),
         p(classes: 'intro-links', [
           a(
-            [.text('★ View on GitHub')],
-            href: 'https://github.com/orestesgaolin/katex',
-            attributes: const {'target': '_blank', 'rel': 'noopener'},
+            [.text('See the mermaid dart comparison →')],
+            href: 'https://orestesgaolin.github.io/mermaid/',
+            attributes: const {'target': '_blank', 'rel': 'noopener noreferrer'},
           ),
         ]),
       ]),
@@ -104,6 +120,13 @@ class App extends StatelessComponent {
             for (final Example ex in group.examples) ComparisonRow(ex),
           ]),
       ]),
+      footer(classes: 'foot', [
+        p([
+          .text('Each row renders the same TeX three ways — KaTeX JS '
+              '(ground truth), katex Dart → SVG, and katex_flutter — so any '
+              'divergence is visible at a glance.'),
+        ]),
+      ]),
     ]);
   }
 
@@ -116,15 +139,44 @@ class App extends StatelessComponent {
         ),
         css('.site-header', [
           css('&').styles(margin: Margin.only(bottom: 24.px)),
-          css('h1').styles(margin: Margin.zero, fontSize: 2.rem),
+          // Title row: heading on the left, GitHub pill on the right.
+          css('.header-top').styles(
+            display: Display.flex,
+            flexWrap: FlexWrap.wrap,
+            gap: Gap.all(12.px),
+            alignItems: AlignItems.baseline,
+            justifyContent: JustifyContent.spaceBetween,
+          ),
+          css('h1').styles(
+            margin: Margin.only(bottom: 4.px),
+            color: const Color('#1a4fa0'),
+            fontSize: 2.4.rem,
+          ),
           css('.subtitle').styles(
-            color: const Color('#444'),
+            margin: Margin.only(top: 4.px, bottom: .zero),
+            color: const Color('#555566'),
             fontSize: 1.05.rem,
           ),
           css('.legend').styles(
+            margin: Margin.only(top: 10.px),
             color: const Color('#555'),
             fontSize: 0.85.rem,
           ),
+        ]),
+        // GitHub pill in the header (shared shape with the mermaid site).
+        css('.gh-link', [
+          css('&').styles(
+            padding: Padding.symmetric(horizontal: 14.px, vertical: 6.px),
+            radius: BorderRadius.circular(16.px),
+            border: Border.all(color: const Color('#b9ccef'), width: 1.px),
+            color: const Color('#1a4fa0'),
+            backgroundColor: const Color('#ffffff'),
+            textDecoration: const TextDecoration(line: TextDecorationLine.none),
+            fontSize: 0.95.rem,
+            fontWeight: FontWeight.w600,
+            whiteSpace: WhiteSpace.noWrap,
+          ),
+          css('&:hover').styles(backgroundColor: const Color('#eef3ff')),
         ]),
         // Badges.
         css('.badge', [
@@ -281,26 +333,41 @@ class App extends StatelessComponent {
         // Intro / "what is this" section above the editor.
         css('.intro', [
           css('&').styles(
-            maxWidth: 920.px,
-            margin: Margin.only(bottom: 20.px),
+            maxWidth: 880.px,
+            margin: Margin.only(bottom: 24.px),
           ),
           css('p').styles(
-            margin: Margin.only(bottom: 8.px),
-            color: const Color('#333'),
-            fontSize: 0.95.rem,
+            margin: Margin.only(bottom: 10.px),
+            color: const Color('#444'),
+            fontSize: 1.rem,
+            lineHeight: 1.6.em,
           ),
           css('a').styles(color: const Color('#1a4fa0')),
-          css('.intro-links').styles(margin: Margin.only(top: 4.px)),
-          css('.intro-links a').styles(
-            display: Display.inlineBlock,
-            padding: Padding.symmetric(horizontal: 12.px, vertical: 6.px),
-            radius: BorderRadius.circular(6.px),
-            color: const Color('#ffffff'),
-            backgroundColor: const Color('#24292f'),
-            fontSize: 0.9.rem,
-            fontWeight: FontWeight.bold,
-            textDecoration: const TextDecoration(line: TextDecorationLine.none),
-          ),
+          css('.intro-links').styles(margin: Margin.only(top: 8.px)),
+          // Primary call-to-action button (accent-filled).
+          css('.intro-links a', [
+            css('&').styles(
+              display: Display.inlineBlock,
+              padding: Padding.symmetric(horizontal: 16.px, vertical: 8.px),
+              radius: BorderRadius.circular(8.px),
+              color: const Color('#ffffff'),
+              backgroundColor: const Color('#1a4fa0'),
+              fontSize: 0.95.rem,
+              fontWeight: FontWeight.w600,
+              textDecoration: const TextDecoration(line: TextDecorationLine.none),
+            ),
+            css('&:hover').styles(backgroundColor: const Color('#143d7d')),
+          ]),
         ]),
+        // Footer (shared shape with the mermaid site).
+        css('.foot').styles(
+          margin: Margin.only(top: 32.px),
+          padding: Padding.only(top: 16.px),
+          border: Border.only(
+            top: BorderSide(color: const Color('#e2e2e2'), width: 1.px),
+          ),
+          color: const Color('#777788'),
+          fontSize: 0.9.rem,
+        ),
       ];
 }
