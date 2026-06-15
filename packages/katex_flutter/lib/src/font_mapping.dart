@@ -19,12 +19,15 @@ const String katexFlutterPackage = 'katex_flutter';
 
 /// Builds a [TextStyle] for [font] at [fontSizePx] logical pixels.
 ///
-/// - `fontFamily` is [KatexFont.cssFamily] (e.g. `KaTeX_Main`), matching the
-///   family names declared in `pubspec.yaml`.
-/// - `fontWeight` is [FontWeight.w700] for bold variants, else
-///   [FontWeight.w400].
-/// - `fontStyle` is [FontStyle.italic] for italic variants, else
-///   [FontStyle.normal].
+/// - `fontFamily` is `KaTeX_<fontName>` (e.g. `KaTeX_Math-Italic`) — one unique
+///   family per font FILE, matching the per-file families declared in
+///   `pubspec.yaml`.
+/// - `fontWeight`/`fontStyle` are ALWAYS normal. KaTeX's italic/bold fonts bake
+///   the slant/weight into the glyph outlines but leave the file internally
+///   "Regular" (italicAngle 0, no italic/bold bits). Requesting
+///   `FontStyle.italic` / `FontWeight.w700` would make Skia synthesize oblique
+///   / bold ON TOP of the already-styled outlines — a visible double slant
+///   versus the SVG/KaTeX. Selecting the exact file by family avoids synthesis.
 /// - `package` is set so the bundled (package) font is resolved.
 /// - `height` is `1.0` so the line height does not add extra leading; the box
 ///   tree already carries explicit height/depth.
@@ -33,19 +36,11 @@ TextStyle textStyleFor(
   double fontSizePx, {
   Color? color,
 }) {
-  final variant = font.variant;
-  final isBold =
-      variant == KatexFontVariant.bold ||
-      variant == KatexFontVariant.boldItalic;
-  final isItalic =
-      variant == KatexFontVariant.italic ||
-      variant == KatexFontVariant.boldItalic;
-
   return TextStyle(
-    fontFamily: font.cssFamily,
+    fontFamily: 'KaTeX_${font.fontName}',
     package: katexFlutterPackage,
-    fontWeight: isBold ? FontWeight.w700 : FontWeight.w400,
-    fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+    fontWeight: FontWeight.w400,
+    fontStyle: FontStyle.normal,
     fontSize: fontSizePx,
     height: 1,
     color: color,

@@ -87,8 +87,8 @@ class KatexBoxPainter extends CustomPainter {
   /// Extra padding (in em) added on every side before painting, so glyph/SVG
   /// ink that overflows the metric box (bold-glyph overshoot, brace SVG, deep
   /// `\cfrac` denominators) is not clipped. Mirrors the SVG serializer's
-  /// content-overflow pad. The painter shifts its origin by `inkPadEm * fontSize`;
-  /// the caller must size the canvas to [boxSizePxPadded] to match.
+  /// content-overflow pad. The painter shifts its origin by
+  /// `inkPadEm * fontSize`; size the canvas to [boxSizePxPadded] to match.
   final double inkPadEm;
 
   // Cache of laid-out TextPainters keyed by (text, family, variant, size, rgb)

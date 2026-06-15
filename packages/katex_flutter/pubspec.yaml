@@ -35,59 +35,72 @@ flutter:
   # this package's fonts/ dir so Flutter bundles them. Family names match
   # KatexFont.cssFamily ("KaTeX_<Family>") so the painter can select them.
   # Resolve with package: 'katex_flutter' (see lib/src/font_mapping.dart).
+  # Each font FILE is declared under its OWN unique family (the filename stem,
+  # e.g. KaTeX_Math-Italic) with NO weight/style descriptors. KaTeX's italic
+  # and bold fonts bake the slant/weight into the glyph OUTLINES but leave the
+  # files internally flagged "Regular" (italicAngle 0, no italic/bold bits).
+  # If we used one family per group + `style: italic`/`weight: 700`, Skia would
+  # add SYNTHETIC oblique/bold on top of the already-styled outlines (double
+  # slant). Selecting the exact file by family + normal style avoids that,
+  # matching the SVG/KaTeX rendering. See font_mapping.textStyleFor.
   fonts:
-    - family: KaTeX_Main
+    - family: KaTeX_Main-Regular
       fonts:
         - asset: fonts/KaTeX_Main-Regular.ttf
+    - family: KaTeX_Main-Bold
+      fonts:
         - asset: fonts/KaTeX_Main-Bold.ttf
-          weight: 700
+    - family: KaTeX_Main-Italic
+      fonts:
         - asset: fonts/KaTeX_Main-Italic.ttf
-          style: italic
+    - family: KaTeX_Main-BoldItalic
+      fonts:
         - asset: fonts/KaTeX_Main-BoldItalic.ttf
-          weight: 700
-          style: italic
-    - family: KaTeX_Math
+    - family: KaTeX_Math-Italic
       fonts:
         - asset: fonts/KaTeX_Math-Italic.ttf
-          style: italic
+    - family: KaTeX_Math-BoldItalic
+      fonts:
         - asset: fonts/KaTeX_Math-BoldItalic.ttf
-          weight: 700
-          style: italic
-    - family: KaTeX_AMS
+    - family: KaTeX_AMS-Regular
       fonts:
         - asset: fonts/KaTeX_AMS-Regular.ttf
-    - family: KaTeX_Size1
+    - family: KaTeX_Size1-Regular
       fonts:
         - asset: fonts/KaTeX_Size1-Regular.ttf
-    - family: KaTeX_Size2
+    - family: KaTeX_Size2-Regular
       fonts:
         - asset: fonts/KaTeX_Size2-Regular.ttf
-    - family: KaTeX_Size3
+    - family: KaTeX_Size3-Regular
       fonts:
         - asset: fonts/KaTeX_Size3-Regular.ttf
-    - family: KaTeX_Size4
+    - family: KaTeX_Size4-Regular
       fonts:
         - asset: fonts/KaTeX_Size4-Regular.ttf
-    - family: KaTeX_Caligraphic
+    - family: KaTeX_Caligraphic-Regular
       fonts:
         - asset: fonts/KaTeX_Caligraphic-Regular.ttf
+    - family: KaTeX_Caligraphic-Bold
+      fonts:
         - asset: fonts/KaTeX_Caligraphic-Bold.ttf
-          weight: 700
-    - family: KaTeX_Fraktur
+    - family: KaTeX_Fraktur-Regular
       fonts:
         - asset: fonts/KaTeX_Fraktur-Regular.ttf
+    - family: KaTeX_Fraktur-Bold
+      fonts:
         - asset: fonts/KaTeX_Fraktur-Bold.ttf
-          weight: 700
-    - family: KaTeX_SansSerif
+    - family: KaTeX_SansSerif-Regular
       fonts:
         - asset: fonts/KaTeX_SansSerif-Regular.ttf
+    - family: KaTeX_SansSerif-Bold
+      fonts:
         - asset: fonts/KaTeX_SansSerif-Bold.ttf
-          weight: 700
+    - family: KaTeX_SansSerif-Italic
+      fonts:
         - asset: fonts/KaTeX_SansSerif-Italic.ttf
-          style: italic
-    - family: KaTeX_Script
+    - family: KaTeX_Script-Regular
       fonts:
         - asset: fonts/KaTeX_Script-Regular.ttf
-    - family: KaTeX_Typewriter
+    - family: KaTeX_Typewriter-Regular
       fonts:
         - asset: fonts/KaTeX_Typewriter-Regular.ttf
