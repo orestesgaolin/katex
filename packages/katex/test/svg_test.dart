@@ -47,7 +47,7 @@ String _compact(double v) {
 
 void main() {
   group('serializeBox', () {
-    test('single glyph: valid XML with a <text> and a viewBox', () {
+    test('single glyph: valid XML with a <path> outline and a viewBox', () {
       final node = glyph('a');
       final svg = serializeBox(node);
 
@@ -56,12 +56,14 @@ void main() {
       final root = doc.rootElement;
       expect(root.name.local, 'svg');
 
-      // Exactly one <text> with the math italic family.
-      final texts = doc.findAllElements('text').toList();
-      expect(texts, hasLength(1));
-      expect(texts.first.getAttribute('font-family'), 'KaTeX_Math');
-      expect(texts.first.getAttribute('font-style'), 'italic');
-      expect(texts.first.innerText, 'a');
+      // The glyph is emitted as a <path> outline (not <text>) — Chrome's SVG
+      // <text> mangles some KaTeX glyphs, so we draw the font outline directly.
+      // The path carries a `matrix(s,0,0,-s,0,0)` transform (scale + Y-flip).
+      final paths = doc.findAllElements('path').toList();
+      expect(paths, hasLength(1));
+      expect(paths.first.getAttribute('transform'), startsWith('matrix('));
+      expect(paths.first.getAttribute('d'), isNotEmpty);
+      expect(doc.findAllElements('text').toList(), isEmpty);
 
       // viewBox reflects width * fontSize and (height+depth) * fontSize, plus
       // a symmetric content-overflow pad (0.08 em) on every side so glyph ink
@@ -96,8 +98,8 @@ void main() {
       final svg = serializeBox(node);
       final doc = XmlDocument.parse(svg);
 
-      final texts = doc.findAllElements('text').toList();
-      expect(texts, hasLength(2));
+      final paths = doc.findAllElements('path').toList();
+      expect(paths, hasLength(2));
 
       // The second glyph is wrapped in a translate group at x = 0.5*44 = 22
       // (relative to the inner content group; the pad is on the outer group).
@@ -117,7 +119,7 @@ void main() {
       final svg = serializeBox(node);
       final doc = XmlDocument.parse(svg);
 
-      expect(doc.findAllElements('text').toList(), hasLength(2));
+      expect(doc.findAllElements('path').toList(), hasLength(2));
       // Second glyph placed after glyph (0.5) + kern (0.25) = 0.75 em → 33.
       expect(svg, contains('translate(33,0)'));
     });
@@ -145,8 +147,8 @@ void main() {
       expect(rects, hasLength(1));
       expect(rects.first.getAttribute('width'), '22'); // 0.5 * 44
 
-      // Two glyphs (numerator + denominator).
-      expect(doc.findAllElements('text').toList(), hasLength(2));
+      // Two glyphs (numerator + denominator), each a <path> outline.
+      expect(doc.findAllElements('path').toList(), hasLength(2));
 
       // viewBox height spans the whole vlist (height + depth) plus the 0.08 em
       // content-overflow pad on the top and bottom. The serializer formats it
@@ -167,13 +169,13 @@ void main() {
       final svg = serializeBox(node);
       final doc = XmlDocument.parse(svg);
 
-      // A <g fill="#ff0000"> wraps the child text.
+      // A <g fill="#ff0000"> wraps the child glyph <path>.
       final colored = doc
           .findAllElements('g')
           .where((g) => g.getAttribute('fill') == '#ff0000')
           .toList();
       expect(colored, hasLength(1));
-      expect(colored.first.findAllElements('text').toList(), hasLength(1));
+      expect(colored.first.findAllElements('path').toList(), hasLength(1));
     });
 
     test('XML special characters in glyphs are escaped', () {
@@ -200,9 +202,11 @@ void main() {
       final doc = XmlDocument.parse(svg);
       // content 0.5*100 = 50, plus pad 0.08*100 = 8 each side → 50 + 16 = 66.
       expect(doc.rootElement.getAttribute('width'), '66');
+      // The glyph outline is scaled via its matrix transform: the em scale is
+      // fontSize / unitsPerEm = 100 / 1000 = 0.1 (Y flipped → -0.1).
       expect(
-        doc.findAllElements('text').first.getAttribute('font-size'),
-        '100',
+        doc.findAllElements('path').first.getAttribute('transform'),
+        'matrix(0.1,0,0,-0.1,0,0)',
       );
     });
 

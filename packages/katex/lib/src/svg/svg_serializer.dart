@@ -44,6 +44,7 @@ library;
 import 'package:katex/src/box/box_node.dart';
 import 'package:katex/src/font/embedded_fonts.g.dart';
 import 'package:katex/src/font/font_types.dart';
+import 'package:katex/src/svg/glyph_paths.g.dart';
 
 /// The default em → user-unit scale (SVG user units per em).
 ///
@@ -277,16 +278,29 @@ class _SvgSerializer {
   // --- Glyph ----------------------------------------------------------------
 
   void _writeGlyph(GlyphNode node) {
-    final family = node.font.cssFamily;
     final size = fontSize * node.size;
-    // A glyph renders at its box origin. `skew` and `italic` are metadata for
-    // *builders* (accent placement, supsub italic correction) which bake any
-    // resulting shift into the box tree — they must NOT offset the glyph here,
-    // or slanted glyphs (e.g. math-italic `f`, skew 0.167em) get pushed into
-    // following content (overlapping `f'` primes) and past the viewBox
-    // (clipping).
-    final style = _glyphStyle(node.font.variant);
 
+    // Prefer a real glyph OUTLINE (<path>) over <text>: Chrome's SVG <text>
+    // renderer mangles some complex KaTeX glyphs (e.g. the Size2 integral
+    // renders as a degenerate triangle) even though the same font is fine in
+    // HTML/Flutter. Path outlines are font-engine-independent and exact.
+    //
+    // Outlines are in font units (y-up); scale by size/unitsPerEm and flip Y
+    // so the glyph baseline lands on y=0 at the box origin (like <text y="0">).
+    final glyphPath = katexGlyphPaths[node.font.fontName]?[node.codepoint];
+    if (glyphPath != null) {
+      final s = size / katexGlyphUnitsPerEm;
+      _buf
+        ..write('<path transform="matrix(${_num(s)},0,0,${_num(-s)},0,0)" ')
+        ..write('d="${_escapeAttr(glyphPath)}"/>');
+      return;
+    }
+
+    // Fallback: <text> with the embedded font (rare — glyph not in the
+    // extracted outline set). `skew`/`italic` are builder metadata, not applied
+    // here (they are baked into the box tree).
+    final family = node.font.cssFamily;
+    final style = _glyphStyle(node.font.variant);
     _buf
       ..write('<text x="0" y="0" ')
       ..write('font-family="$family" ')
