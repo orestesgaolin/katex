@@ -219,10 +219,32 @@ BoxNode _braceSvg(String label, double baseWidth) {
   ]);
 }
 
-BoxNode _buildHorizBrace(ast.HorizBraceNode group, Options options) {
+BoxNode _buildHorizBrace(ast.HorizBraceNode group, Options options) =>
+    _horizBrace(group, options, null);
+
+/// Builds a `\overbrace{…}^{label}` / `\underbrace{…}_{label}`: the brace with
+/// its note stacked (and centered) above/below. Port of horizBrace.ts's supsub
+/// path — KaTeX treats the brace like an op with `\limits`, so the label is the
+/// sup (over) or sub (under) rendered in script style and centered over the
+/// brace (the equation, not the note, controls the brace width).
+BoxNode buildHorizBraceSupSub(ast.SupSubNode grp, Options options) {
+  final group = grp.base! as ast.HorizBraceNode;
+  final label = group.isOver
+      ? buildGroup(grp.sup, options.havingStyle(options.style.sup()), options)
+      : buildGroup(grp.sub, options.havingStyle(options.style.sub()), options);
+  return _horizBrace(group, options, label);
+}
+
+BoxNode _horizBrace(
+  ast.HorizBraceNode group,
+  Options options,
+  BoxNode? label,
+) {
   final body = buildGroup(group.base, options.havingBaseStyle(Style.DISPLAY));
   final braceBody = _braceSvg(group.label.substring(1), body.width);
+  final braceClass = group.isOver ? 'mover' : 'munder';
 
+  // First vlist: the braced content + the brace itself.
   final VList vlist;
   if (group.isOver) {
     vlist = makeVList(
@@ -245,9 +267,48 @@ BoxNode _buildHorizBrace(ast.HorizBraceNode group, Options options) {
     );
   }
 
-  final braceClass = group.isOver ? 'mover' : 'munder';
+  if (label == null) {
+    return withAtomClass(
+      makeSpan([vlist], classes: [braceClass]),
+      'minner',
+      options: options,
+    );
+  }
+
+  // Stack the note above/below the brace in a second vlist. KaTeX centers the
+  // children via CSS; our VLists are left-aligned, so we bake the centering as
+  // a leading kern (like the accent builder), centering the narrower child
+  // against the wider so the equation — not the note — controls the width.
+  final vSpan = makeSpan([vlist], classes: ['minner', braceClass]);
+  final totalWidth = vSpan.width > label.width ? vSpan.width : label.width;
+  BoxNode centered(BoxNode b) => b.width >= totalWidth
+      ? b
+      : makeFragment([KernNode((totalWidth - b.width) / 2), b]);
+
+  final VList outer;
+  if (group.isOver) {
+    outer = makeVList(
+      positionType: VListPositionType.firstBaseline,
+      children: [
+        VListChild.elem(centered(vSpan)),
+        const VListChild.kern(0.2),
+        VListChild.elem(centered(label)),
+      ],
+    );
+  } else {
+    outer = makeVList(
+      positionType: VListPositionType.bottom,
+      positionData: vSpan.depth + 0.2 + label.height + label.depth,
+      children: [
+        VListChild.elem(centered(label)),
+        const VListChild.kern(0.2),
+        VListChild.elem(centered(vSpan)),
+      ],
+    );
+  }
+
   return withAtomClass(
-    makeSpan([vlist], classes: [braceClass]),
+    makeSpan([outer], classes: [braceClass]),
     'minner',
     options: options,
   );

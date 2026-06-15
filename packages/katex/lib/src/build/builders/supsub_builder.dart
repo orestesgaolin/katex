@@ -11,6 +11,7 @@ import 'package:katex/src/box/box_node.dart';
 import 'package:katex/src/build/build_common.dart';
 import 'package:katex/src/build/build_expression.dart';
 import 'package:katex/src/build/builders/accent_builders.dart';
+import 'package:katex/src/build/builders/extra_builders.dart';
 import 'package:katex/src/build/builders/op_builders.dart';
 import 'package:katex/src/build/options.dart';
 import 'package:katex/src/build/style.dart';
@@ -66,6 +67,11 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     if (isCharacterBox(base.base)) {
       return buildAccentSupSub(group, options);
     }
+  } else if (base is HorizBraceNode) {
+    // \overbrace{…}^{note} / \underbrace{…}_{note}: the brace handles its own
+    // script, stacking the note centered above/below (KaTeX treats it as an op
+    // with \limits). The generic path would float the note to the upper-right.
+    return buildHorizBraceSupSub(group, options);
   }
 
   final valueBase = group.base;
