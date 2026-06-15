@@ -265,9 +265,17 @@ BoxNode _buildOpSideSupSub(
     return withAtomClass(base, 'mop', options: options);
   }
 
+  // Shift the whole script cluster right by the operator's italic correction,
+  // then the subscript is pulled back by -italic (subMarginLeft) while the
+  // superscript stays out at advance+italic. This places the sup clear of the
+  // slanted sign's top-right ink (which overshoots the advance by ~italic) and
+  // tucks the sub under it — matching KaTeX's rendered \int_0^1 (where the
+  // sup sits at advance+italic and the sub at advance). Without this, both
+  // scripts sit `italic` too far left and overlap the integral sign.
   return withAtomClass(
     makeFragment([
       base,
+      if (opBase.italic != 0) KernNode(opBase.italic),
       makeSpan([supsub], classes: const ['msupsub']),
     ]),
     'mop',
