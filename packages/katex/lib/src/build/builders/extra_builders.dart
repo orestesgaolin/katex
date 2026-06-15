@@ -198,13 +198,15 @@ BoxNode _braceSvg(String label, double baseWidth) {
       );
 
   if (paths.length == 3) {
-    // Three-piece brace: left corner | stretchy center | right corner.
-    final cornerWidth = baseWidth / 4;
-    final centerWidth = baseWidth - 2 * cornerWidth;
+    // Three-piece brace (KaTeX stretchy.svgSpan, 3-child case): left corner |
+    // center tooth | right corner, at CSS widths 25.1% / 50% / 25.1% with
+    // aligns xMinYMin / xMidYMin / xMaxYMin (all "slice"). The center keeps the
+    // brace's central tooth visible; using "none" would flatten the curve.
+    final cornerWidth = baseWidth * 0.251;
+    final centerWidth = baseWidth * 0.5;
     return HBox([
       piece(paths[0], cornerWidth, SvgPreserveAspectRatio.xMinYMinSlice),
-      // The center is a flat span; stretch it (none) to fill the gap.
-      piece(paths[1], centerWidth, SvgPreserveAspectRatio.none),
+      piece(paths[1], centerWidth, SvgPreserveAspectRatio.xMidYMinSlice),
       piece(paths[2], cornerWidth, SvgPreserveAspectRatio.xMaxYMinSlice),
     ]);
   }

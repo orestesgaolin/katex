@@ -18,6 +18,7 @@ void registerArrayEnvironments() {
   }
   _registered = true;
   _registerArray();
+  _registerSubarray();
   _registerMatrix();
   _registerCases();
   _registerAligned();
@@ -275,6 +276,53 @@ void _registerArray() {
           ),
           _dCellStyle(context.envName),
         );
+      },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// subarray (used by \substack)
+// ---------------------------------------------------------------------------
+
+void _registerSubarray() {
+  defineEnvironment(
+    <String>['subarray'],
+    EnvSpec(
+      type: 'array',
+      numArgs: 1,
+      handler: (context, args, optArgs) {
+        // Parsing of {subarray} is similar to {array}.
+        final symNode = _checkSymbolNode(args[0]);
+        final colalign = symNode != null
+            ? <ParseNode>[args[0]]
+            : _assertOrdgroup(args[0]).body;
+        final cols = colalign.map((nde) {
+          final node = _assertSymbolNode(nde);
+          final ca = node.text;
+          // {subarray} only recognizes "l" & "c".
+          if ('lc'.contains(ca)) {
+            return AlignSpec.align(ca);
+          }
+          throw ParseError('Unknown column alignment: $ca');
+        }).toList();
+        if (cols.length > 1) {
+          throw ParseError('{subarray} can contain only one column');
+        }
+        final res = _parseArray(
+          context.parser,
+          _ArrayPayload(
+            cols: cols,
+            hskipBeforeAndAfter: false,
+            arraystretch: 0.5,
+            maxNumCols: cols.length,
+          ),
+          StyleStr.script,
+        );
+        if (res.body.isNotEmpty && res.body[0].length > 1) {
+          throw ParseError('{subarray} can contain only one column');
+        }
+        return res;
       },
     ),
   );

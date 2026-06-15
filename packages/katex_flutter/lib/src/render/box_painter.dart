@@ -315,6 +315,14 @@ class KatexBoxPainter extends CustomPainter {
         canvas
           ..translate(dx, 0)
           ..scale(s, s);
+      case SvgPreserveAspectRatio.xMidYMinSlice:
+        // Uniform cover scale, top-CENTER anchored (xMidYMin): used by the
+        // center piece of stretchy braces so the central tooth stays centered.
+        final s = sx > sy ? sx : sy;
+        final dx = (dstW - node.viewBoxWidth * s) / 2;
+        canvas
+          ..translate(dx, 0)
+          ..scale(s, s);
     }
 
     final paint = Paint()

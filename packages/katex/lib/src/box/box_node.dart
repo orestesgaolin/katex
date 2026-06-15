@@ -702,6 +702,10 @@ enum SvgPreserveAspectRatio {
 
   /// Uniform scale to cover the box, top-right anchored, overflow clipped.
   xMaxYMinSlice,
+
+  /// Uniform scale to cover the box, top-center anchored, overflow clipped.
+  /// Used by the center piece of stretchy braces (`\overbrace`/`\underbrace`).
+  xMidYMinSlice,
 }
 
 /// A stretchy SVG path: the real geometry for `\sqrt` surds and stacked

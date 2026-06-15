@@ -152,6 +152,39 @@ _katexImagesData = {
     viewBoxHeight: 522,
     aligns: ['xMinYMin', 'xMaxYMin'],
   ),
+  // Under-accents (accentunder.ts) reuse the same paths as their over-twins;
+  // KaTeX's katexImagesData lists them separately. The CSS flips them
+  // vertically for the under variants, but the path geometry is identical.
+  'underrightarrow': (
+    paths: ['rightarrow'],
+    minWidth: 0.888,
+    viewBoxHeight: 522,
+    aligns: ['xMaxYMin'],
+  ),
+  'underleftarrow': (
+    paths: ['leftarrow'],
+    minWidth: 0.888,
+    viewBoxHeight: 522,
+    aligns: ['xMinYMin'],
+  ),
+  'underleftrightarrow': (
+    paths: ['leftarrow', 'rightarrow'],
+    minWidth: 0.888,
+    viewBoxHeight: 522,
+    aligns: ['xMinYMin', 'xMaxYMin'],
+  ),
+  'undergroup': (
+    paths: ['leftgroupunder', 'rightgroupunder'],
+    minWidth: 0.888,
+    viewBoxHeight: 342,
+    aligns: ['xMinYMin', 'xMaxYMin'],
+  ),
+  'underlinesegment': (
+    paths: ['leftlinesegment', 'rightlinesegment'],
+    minWidth: 0.888,
+    viewBoxHeight: 522,
+    aligns: ['xMinYMin', 'xMaxYMin'],
+  ),
 };
 
 /// Maps a KaTeX `preserveAspectRatio` x-anchor name to our slice enum. The
@@ -182,12 +215,12 @@ int _baseNumChars(ParseNode base) {
 /// KaTeX's chosen image height. Single-path arrows return one [SvgPathNode];
 /// paired arrows (`\overleftrightarrow`, `\overgroup`, `\overlinesegment`)
 /// return an [HBox] of two half-width sliced nodes so BOTH heads/corners show.
-BoxNode _stretchySvg(AccentNode group, double baseWidth) {
-  final label = group.label.substring(1); // strip leading backslash
+BoxNode _stretchySvg(String fullLabel, ParseNode base, double baseWidth) {
+  final label = fullLabel.substring(1); // strip leading backslash
 
   if (_wideAccentLabels.contains(label)) {
     // Wide accents: choose a taller image when there are more characters.
-    final numChars = _baseNumChars(group.base);
+    final numChars = _baseNumChars(base);
     final double viewBoxWidth;
     final double viewBoxHeight;
     final double height;
@@ -371,7 +404,7 @@ BoxNode _buildAccent(AccentNode group, Options options) {
   // main baseline, placing the whole accent above the base. Adding a
   // `-clearance` kern (as the non-stretchy path does) would instead pull the
   // accent down onto the base, drawing it over/through the letters.
-  final accentBody = _stretchySvg(group, body.width);
+  final accentBody = _stretchySvg(group.label, group.base, body.width);
 
   final vlist = makeVList(
     positionType: VListPositionType.firstBaseline,
@@ -416,18 +449,19 @@ BoxNode buildAccentSupSub(SupSubNode grp, Options options) {
 }
 
 BoxNode _buildAccentUnder(AccentUnderNode group, Options options) {
+  // Port of accentunder.ts htmlBuilder: under-accents use the same stretchy
+  // SVG as over-accents (NOT a font glyph), placed BELOW the base via a
+  // `top` vlist. \utilde gets a small 0.12em kern between base and tilde.
   final body = buildGroup(group.base, options);
-  final accentGlyph =
-      makeOrd(group.label, group.mode, options, isTextord: true) ??
-      makeSpan(const []);
-  final clearance = options.fontMetrics().defaultRuleThickness * 3;
+  final accentBody = _stretchySvg(group.label, group.base, body.width);
+  final kern = group.label == r'\utilde' ? 0.12 : 0.0;
+
   final vlist = makeVList(
     positionType: VListPositionType.top,
     positionData: body.height,
     children: [
-      VListChild.kern(clearance),
-      VListChild.elem(accentGlyph),
-      VListChild.kern(clearance),
+      VListChild.elem(accentBody),
+      VListChild.kern(kern),
       VListChild.elem(body),
     ],
   );

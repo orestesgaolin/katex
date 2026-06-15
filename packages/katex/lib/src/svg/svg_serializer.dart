@@ -412,6 +412,9 @@ class _SvgSerializer {
       // anchored so the arrowhead at x≈400000 stays visible at the box's right
       // edge; the long shaft tail runs off the left and is clipped.
       SvgPreserveAspectRatio.xMaxYMinSlice => 'xMaxYMin slice',
+      // "xMidYMin slice" for the center piece of a stretchy brace: uniform
+      // cover, top-center anchored so the brace's central tooth stays centered.
+      SvgPreserveAspectRatio.xMidYMinSlice => 'xMidYMin slice',
     };
     _buf
       ..write('<svg x="0" y="${_num(y)}" ')
