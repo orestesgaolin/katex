@@ -145,18 +145,11 @@ BoxNode _buildOpSideSupSub(
   Options options,
 ) {
   final metrics = options.fontMetrics();
-  // Center the op glyph on the math axis BEFORE attaching side scripts: KaTeX's
-  // op builder returns an already-shifted base to supsub.js, and the script
-  // shifts (rule 18a/b) are measured from that centered box. Without this the
-  // tall integral sits on the baseline (tiny depth), so the lower limit —
-  // placed at base.depth — collides with the sign's bottom hook.
-  final base = opBase.baseShift != 0
-      ? makeVList(
-          positionType: VListPositionType.shift,
-          positionData: opBase.baseShift,
-          children: [VListChild.elem(opBase.box)],
-        )
-      : opBase.box;
+  // The op base carries its own vertical centering (baseShift) inside its box,
+  // so we treat it as the supsub base directly. (KaTeX applies baseShift to the
+  // nolimits op via CSS `top`, a visual shift that does NOT change the box's
+  // height/depth used for script positioning; for the integral baseShift≈0.)
+  final base = opBase.box;
 
   var supShift = 0.0;
   var subShift = 0.0;
