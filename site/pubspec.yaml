@@ -28,6 +28,8 @@ dev_dependencies:
 
 jaspr:
   mode: static
+  # Port for the static-build crawl server (default 8080 is often taken).
+  port: 8092
   flutter: embedded
 
 flutter:

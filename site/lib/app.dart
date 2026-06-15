@@ -87,18 +87,15 @@ class App extends StatelessComponent {
         ]),
         p([
           .text('That portable core is reused elsewhere: '),
-          strong([.text('mermaid dart')]),
+          a(
+            [.text('mermaid dart')],
+            href: 'https://orestesgaolin.github.io/mermaid/',
+            attributes: const {'target': '_blank', 'rel': 'noopener noreferrer'},
+          ),
           .text(', a pure-Dart port of mermaid.js, renders the TeX math labels '
               'in its diagrams with '),
           strong([.text('katex')]),
           .text('.'),
-        ]),
-        p(classes: 'intro-links', [
-          a(
-            [.text('See the mermaid dart comparison →')],
-            href: 'https://orestesgaolin.github.io/mermaid/',
-            attributes: const {'target': '_blank', 'rel': 'noopener noreferrer'},
-          ),
         ]),
       ]),
       // SITE-2: live editor above the comparison table.
@@ -343,21 +340,6 @@ class App extends StatelessComponent {
             lineHeight: 1.6.em,
           ),
           css('a').styles(color: const Color('#1a4fa0')),
-          css('.intro-links').styles(margin: Margin.only(top: 8.px)),
-          // Primary call-to-action button (accent-filled).
-          css('.intro-links a', [
-            css('&').styles(
-              display: Display.inlineBlock,
-              padding: Padding.symmetric(horizontal: 16.px, vertical: 8.px),
-              radius: BorderRadius.circular(8.px),
-              color: const Color('#ffffff'),
-              backgroundColor: const Color('#1a4fa0'),
-              fontSize: 0.95.rem,
-              fontWeight: FontWeight.w600,
-              textDecoration: const TextDecoration(line: TextDecorationLine.none),
-            ),
-            css('&:hover').styles(backgroundColor: const Color('#143d7d')),
-          ]),
         ]),
         // Footer (shared shape with the mermaid site).
         css('.foot').styles(

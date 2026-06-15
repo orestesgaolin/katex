@@ -42,6 +42,14 @@ class SiteNav extends StatelessComponent {
         attributes: active == SiteRoute.supported ? const {'aria-current': 'page'} : const {},
         [.text('Supported functions')],
       ),
+      // Cross-link to the sibling mermaid dart comparison site (which shares
+      // this layout and renders its TeX math labels with katex).
+      a(
+        classes: 'nav-link external',
+        href: 'https://orestesgaolin.github.io/mermaid/',
+        attributes: const {'target': '_blank', 'rel': 'noopener noreferrer'},
+        [.text('mermaid dart ↗')],
+      ),
     ]);
   }
 
@@ -72,6 +80,8 @@ class SiteNav extends StatelessComponent {
               color: const Color('#fff'),
               backgroundColor: const Color('#1a4fa0'),
             ),
+            // Push the cross-site link to the far right of the bar.
+            css('&.external').styles(margin: Margin.only(left: Unit.auto)),
           ]),
         ]),
       ];
