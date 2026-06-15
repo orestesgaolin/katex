@@ -78,21 +78,8 @@ BoxNode _sizingGroup(
 
 // ---- styling ----------------------------------------------------------------
 
-Style _styleFor(ast.StyleStr s) {
-  switch (s) {
-    case ast.StyleStr.display:
-      return Style.DISPLAY;
-    case ast.StyleStr.text:
-      return Style.TEXT;
-    case ast.StyleStr.script:
-      return Style.SCRIPT;
-    case ast.StyleStr.scriptscript:
-      return Style.SCRIPTSCRIPT;
-  }
-}
-
 BoxNode _buildStyling(ast.StylingNode group, Options options) {
-  final newStyle = _styleFor(group.style);
+  final newStyle = Style.fromStr(group.style);
   var newOptions = options.havingStyle(newStyle);
   if (group.resetFont ?? false) {
     newOptions = newOptions.withFont('');

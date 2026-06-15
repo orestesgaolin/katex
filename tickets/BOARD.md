@@ -56,6 +56,15 @@ in `tickets/T-NNN-*.md` with full description + acceptance criteria. A ticket mo
 | [T-039](T-039-port-functions-no-box-changes.md) | Port remaining functions (html@mathml, mathchoice, phantom/lap/smash, arrows, def-family, …) | M8 | done | T-038 |
 | [T-040](T-040-port-enclose-functions.md) | Port enclose group (\boxed \cancel \colorbox …) + math-mode `$` switch | M8 | done | T-039 |
 | [T-041](T-041-final-coverage-100.md) | Final coverage: \phase, \includegraphics, \\ / \cr / \newline | M8 | done | T-040 |
+| [T-042](T-042-refactor-assert-node-helper.md) | Refactor: unify duplicated `_assert*Node` type-guards | M9 | done | — |
+| [T-043](T-043-refactor-box-dimension-math.md) | Refactor: unify box dimension math (HBox/SpanNode + builders) | M9 | done | — |
+| [T-044](T-044-refactor-copywith-nodes.md) | Refactor: `copyWith` for ArrayNode/OpNode (kill field-by-field rebuilds) | M9 | done | — |
+| [T-045](T-045-refactor-delete-duplicates.md) | Refactor: delete verbatim-duplicate fns/consts/imports | M9 | done | — |
+| [T-046](T-046-refactor-settings-strict.md) | Refactor: dedup Settings strict-mode resolution | M9 | done | — |
+| [T-047](T-047-refactor-margin-wrappers.md) | Refactor: unify margin/kern wrapper helpers | M9 | done | — |
+| [T-048](T-048-refactor-small-batch.md) | Refactor: small mechanical simplifications batch | M9 | done | — |
+| [T-049](T-049-refactor-op-supsub-layout-merge.md) | Refactor: merge op/supsub side-script layout (HIGH risk, deferred) | M9 | todo | — |
+| [T-050](T-050-refactor-parse-node-type-field.md) | Refactor: single source of truth for parse-node `type` strings (deferred) | M9 | todo | — |
 
 ## Symbol/function coverage (M8, 2026-06-15) — COMPLETE
 Goal: "support remaining katex symbols." Probe = every KaTeX function+macro command name run through
@@ -128,3 +137,5 @@ floats left instead of nesting in the radical → **T-026**.
 - 2026-06-14 — T-022 **done**: real stretchy surd geometry via load-bearing `SvgPathNode` (svgGeometry port + SVG `<path>` + Flutter `drawPath` + SVG-path-`d` parser). Oracle gate held 26/26; surd visual diff improved. katex 261 tests.
 - 2026-06-14 — User flagged reference PNGs look low-res vs browser KaTeX → **T-023 done**: root cause was rendering at the 16px browser default; regenerated fixtures at 48px (crisp, delimiters stretch correctly). Metrics unchanged (em-based) → gate still 26/26; updated svg-golden zoom 0.88→2.64. 261 tests.
 - 2026-06-14 — **T-024 added** (todo): comprehensive Jaspr static site rendering KaTeX JS vs `katex` Dart-SVG vs `katex_flutter` (Flutter web embed) side by side, via `jaspr serve`.
+- 2026-06-15 — **M9 refactor/simplify wave (T-042…T-048) done.** Code-review-driven dedup pass over `packages/katex`, validated after every ticket (analyze clean + 304 tests + oracle dimension gate 26/26 + golden mean-diff held at 0.1559 throughout; `katex_flutter` 62 tests still green). Changes: generic `assertNodeType<T>` replacing ~12 hand-written `_assert*` guards across functions/enclose/includegraphics/array; shared `_sumWidth`/`_maxHeight`/`_maxDepth` + `_dims` toString helper in box_node (HBox/SpanNode + delimiter/array builders); `copyWith` on ArrayNode/OpNode/OperatorNameNode (killed field-by-field rebuilds in array.dart + parser `_resolvedLimitsBase`); deleted verbatim dups (`_pmbBinrelClass`, dup `\newline`, dup `_sizeToMaxHeight`, `_styleFromStr`/`_styleFor`→`Style.fromStr`, dup ParseError import); dedup'd Settings strict-mode (`_resolvedStrict`+`_warnStrict`); unified margin wrappers → `withMargins` in build_common; hoisted per-call regexes to file-level finals (parser, macro_expander), `_nonStretchyAccentRegex`→`const Set`, `Options.floorRuleThickness`, `svg` `_escapeAttr`/`_strokeOr` helpers, CLI `fail`/`usageError` helpers, collapsed parser SupSub ladder. No behavior change (pure refactor); riskier op/supsub layout merge + parse-node `type`-field migration deliberately deferred.
+- 2026-06-15 — Filed the two deferred M9 refactors as tickets (todo): **T-049** (merge op/supsub side-script layout, HIGH risk — base-italic vs unwrap-italic distinction) and **T-050** (single source of truth for parse-node `type` strings, ~50 classes + FunctionSpec/EnvSpec). Both carry acceptance criteria pinning the same gates the M9 wave held.

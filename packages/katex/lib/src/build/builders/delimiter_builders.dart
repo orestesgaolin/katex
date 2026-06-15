@@ -545,16 +545,8 @@ BoxNode _buildLeftRight(LeftRightNode group, Options options) {
     surroundingRight: 'mclose',
   );
 
-  var innerHeight = 0.0;
-  var innerDepth = 0.0;
-  for (final node in inner) {
-    if (node.height > innerHeight) {
-      innerHeight = node.height;
-    }
-    if (node.depth > innerDepth) {
-      innerDepth = node.depth;
-    }
-  }
+  var innerHeight = inner.fold<double>(0, (m, n) => math.max(m, n.height));
+  var innerDepth = inner.fold<double>(0, (m, n) => math.max(m, n.depth));
   innerHeight *= options.sizeMultiplier;
   innerDepth *= options.sizeMultiplier;
 

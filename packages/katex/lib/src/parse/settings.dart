@@ -112,36 +112,46 @@ class Settings {
   /// Whether definitions are global by default.
   final bool globalGroup;
 
-  /// Report nonstrict (non-LaTeX-compatible) input.
-  ///
-  /// Can safely not be called if [strict] is `false`.
-  void reportNonstrict(String errorCode, String errorMsg, [Token? token]) {
-    var strict = this.strict;
-    if (strict is StrictFunction) {
-      // Allow the return value to be bool or String (or null, meaning no
-      // further processing).
-      strict = strict(errorCode, errorMsg, token) ?? false;
+  /// Resolves [strict] to a concrete value (`bool` or `String`), invoking a
+  /// [StrictFunction] if that is how strictness is configured. When
+  /// [catchErrors] is set, an exception thrown by the function is treated as
+  /// `'error'` (the behavior [useStrictBehavior] wants); otherwise it
+  /// propagates (the behavior [reportNonstrict] wants).
+  Object _resolvedStrict(
+    String errorCode,
+    String errorMsg,
+    Token? token, {
+    required bool catchErrors,
+  }) {
+    final strict = this.strict;
+    if (strict is! StrictFunction) {
+      return strict;
     }
-    if (strict == false || strict == 'ignore') {
-      return;
-    } else if (strict == true || strict == 'error') {
-      throw ParseError(
-        "LaTeX-incompatible input and strict mode is set to 'error': "
-        '$errorMsg [$errorCode]',
-        token,
-      );
-    } else if (strict == 'warn') {
-      // KaTeX logs strict-mode warnings to the console; print is the
-      // closest pure-Dart equivalent.
+    // The return value may be bool or String (or null → no further
+    // processing, i.e. `false`).
+    if (!catchErrors) {
+      return strict(errorCode, errorMsg, token) ?? false;
+    }
+    try {
+      return strict(errorCode, errorMsg, token) ?? false;
+    } on Object {
+      return 'error';
+    }
+  }
+
+  /// Emits the strict-mode warning for [strict] (`'warn'` or an unrecognized
+  /// value).
+  void _warnStrict(Object strict, String errorCode, String errorMsg) {
+    if (strict == 'warn') {
+      // KaTeX logs warnings to the console; print is the pure-Dart equivalent.
       // ignore: avoid_print
       print(
         "LaTeX-incompatible input and strict mode is set to 'warn': "
         '$errorMsg [$errorCode]',
       );
     } else {
-      // won't happen in type-safe code
-      // KaTeX logs strict-mode warnings to the console; print is the
-      // closest pure-Dart equivalent.
+      // won't happen in type-safe code.
+      // KaTeX logs warnings to the console; print is the pure-Dart equivalent.
       // ignore: avoid_print
       print(
         'LaTeX-incompatible input and strict mode is set to '
@@ -150,46 +160,49 @@ class Settings {
     }
   }
 
+  /// Report nonstrict (non-LaTeX-compatible) input.
+  ///
+  /// Can safely not be called if [strict] is `false`.
+  void reportNonstrict(String errorCode, String errorMsg, [Token? token]) {
+    final strict = _resolvedStrict(
+      errorCode,
+      errorMsg,
+      token,
+      catchErrors: false,
+    );
+    if (strict == false || strict == 'ignore') {
+      return;
+    }
+    if (strict == true || strict == 'error') {
+      throw ParseError(
+        "LaTeX-incompatible input and strict mode is set to 'error': "
+        '$errorMsg [$errorCode]',
+        token,
+      );
+    }
+    _warnStrict(strict, errorCode, errorMsg);
+  }
+
   /// Check whether to apply strict (LaTeX-adhering) behavior for unusual input.
   ///
   /// Unlike [reportNonstrict], will not throw; `"error"` translates to a return
   /// value of `true`, while `"ignore"` translates to `false`. `"warn"` prints a
   /// warning and returns `false`.
   bool useStrictBehavior(String errorCode, String errorMsg, [Token? token]) {
-    var strict = this.strict;
-    if (strict is StrictFunction) {
-      // Catch any exceptions thrown by the function, treating them like
-      // "error".
-      try {
-        strict = strict(errorCode, errorMsg, token) ?? false;
-      } on Object {
-        strict = 'error';
-      }
-    }
+    final strict = _resolvedStrict(
+      errorCode,
+      errorMsg,
+      token,
+      catchErrors: true,
+    );
     if (strict == false || strict == 'ignore') {
       return false;
-    } else if (strict == true || strict == 'error') {
-      return true;
-    } else if (strict == 'warn') {
-      // KaTeX logs strict-mode warnings to the console; print is the
-      // closest pure-Dart equivalent.
-      // ignore: avoid_print
-      print(
-        "LaTeX-incompatible input and strict mode is set to 'warn': "
-        '$errorMsg [$errorCode]',
-      );
-      return false;
-    } else {
-      // won't happen in type-safe code
-      // KaTeX logs strict-mode warnings to the console; print is the
-      // closest pure-Dart equivalent.
-      // ignore: avoid_print
-      print(
-        'LaTeX-incompatible input and strict mode is set to '
-        "unrecognized '$strict': $errorMsg [$errorCode]",
-      );
-      return false;
     }
+    if (strict == true || strict == 'error') {
+      return true;
+    }
+    _warnStrict(strict, errorCode, errorMsg);
+    return false;
   }
 
   /// Check whether to trust potentially dangerous input, returning `true`

@@ -13,15 +13,7 @@ library;
 
 import 'package:katex/src/ast/parse_node.dart';
 import 'package:katex/src/functions/function_spec.dart';
-import 'package:katex/src/parse/parse_error.dart';
 import 'package:katex/src/types.dart' show Mode;
-
-ColorTokenNode _assertColorToken(ParseNode node) {
-  if (node is ColorTokenNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type color-token, but got ${node.type}');
-}
 
 /// Registers the enclose-group function handlers.
 void registerEnclose() {
@@ -34,7 +26,8 @@ void registerEnclose() {
       allowedInText: true,
       argTypes: const <ArgType?>[ArgType.color, ArgType.hbox],
       handler: (context, args, optArgs) {
-        final color = _assertColorToken(args[0]).color;
+        final color = assertNodeType<ColorTokenNode>(args[0], 'color-token')
+            .color;
         return EncloseParseNode(
           mode: context.parser.mode,
           label: context.funcName,
@@ -54,8 +47,14 @@ void registerEnclose() {
       allowedInText: true,
       argTypes: const <ArgType?>[ArgType.color, ArgType.color, ArgType.hbox],
       handler: (context, args, optArgs) {
-        final borderColor = _assertColorToken(args[0]).color;
-        final backgroundColor = _assertColorToken(args[1]).color;
+        final borderColor = assertNodeType<ColorTokenNode>(
+          args[0],
+          'color-token',
+        ).color;
+        final backgroundColor = assertNodeType<ColorTokenNode>(
+          args[1],
+          'color-token',
+        ).color;
         return EncloseParseNode(
           mode: context.parser.mode,
           label: context.funcName,

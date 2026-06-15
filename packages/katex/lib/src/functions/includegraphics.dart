@@ -42,13 +42,6 @@ Measurement _sizeData(String str) {
   return Measurement(number, unit);
 }
 
-RawNode _assertRaw(ParseNode node) {
-  if (node is RawNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type raw, but got ${node.type}');
-}
-
 /// Registers the `\includegraphics` function handler.
 void registerIncludegraphics() {
   defineFunction(
@@ -67,7 +60,7 @@ void registerIncludegraphics() {
 
         final optArg = optArgs[0];
         if (optArg != null) {
-          final attributeStr = _assertRaw(optArg).string;
+          final attributeStr = assertNodeType<RawNode>(optArg, 'raw').string;
           // Parser doesn't split key/value pairs; we get a raw string.
           for (final attribute in attributeStr.split(',')) {
             final keyVal = attribute.split('=');
@@ -92,7 +85,7 @@ void registerIncludegraphics() {
         }
 
         // ArgType.url delivers a RawNode carrying the URL string.
-        final src = _assertRaw(args[0]).string;
+        final src = assertNodeType<RawNode>(args[0], 'raw').string;
 
         if (alt == '') {
           // No alt given. Use the file name, stripped of path and extension.

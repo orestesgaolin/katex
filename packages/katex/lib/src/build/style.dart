@@ -10,6 +10,7 @@
 /// instances are fixed and reused.
 library;
 
+import 'package:katex/src/ast/parse_node.dart' show StyleStr;
 import 'package:meta/meta.dart';
 
 // IDs of the different styles (matching KaTeX's D, Dc, T, Tc, S, Sc, SS, SSc).
@@ -58,6 +59,20 @@ class Style {
   /// Scriptscriptstyle (`\scriptscriptstyle`).
   // ignore: constant_identifier_names
   static const Style SCRIPTSCRIPT = Style._(_ss, 3, cramped: false);
+
+  /// The (uncramped) style for a parse-node [StyleStr] keyword.
+  static Style fromStr(StyleStr style) {
+    switch (style) {
+      case StyleStr.display:
+        return DISPLAY;
+      case StyleStr.text:
+        return TEXT;
+      case StyleStr.script:
+        return SCRIPT;
+      case StyleStr.scriptscript:
+        return SCRIPTSCRIPT;
+    }
+  }
 
   /// The style of a superscript given a base in this style.
   Style sup() => _styles[_sup[id]];

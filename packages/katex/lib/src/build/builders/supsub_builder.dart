@@ -161,11 +161,11 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
       positionType: VListPositionType.individualShift,
       children: [
         VListChild.elem(
-          _withMargins(subm, left: subMarginLeft, right: marginRight),
+          withMargins(subm, left: subMarginLeft, right: marginRight),
           shift: subShift,
         ),
         VListChild.elem(
-          _withMargins(supm, right: marginRight),
+          withMargins(supm, right: marginRight),
           shift: -supShift,
         ),
       ],
@@ -180,7 +180,7 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
       positionData: subShift,
       children: [
         VListChild.elem(
-          _withMargins(subm, left: subMarginLeft, right: marginRight),
+          withMargins(subm, left: subMarginLeft, right: marginRight),
         ),
       ],
     );
@@ -192,7 +192,7 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     supsub = makeVList(
       positionType: VListPositionType.shift,
       positionData: -supShift,
-      children: [VListChild.elem(_withMargins(supm, right: marginRight))],
+      children: [VListChild.elem(withMargins(supm, right: marginRight))],
     );
   } else {
     throw StateError('supsub must have either sup or sub.');
@@ -248,13 +248,3 @@ GlyphNode? _baseSymbol(BoxNode base) {
 // Wraps [elem] with optional leading ([left]) and trailing ([right]) kerns,
 // modelling KaTeX's `marginLeft`/`marginRight` on a vlist child. A negative
 // left margin (the base-italic cancellation for subscripts) is a leading kern.
-BoxNode _withMargins(BoxNode elem, {double left = 0, double right = 0}) {
-  if (left == 0 && right == 0) {
-    return elem;
-  }
-  return makeFragment([
-    if (left != 0) KernNode(left),
-    elem,
-    if (right != 0) KernNode(right),
-  ]);
-}

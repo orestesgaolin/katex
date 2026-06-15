@@ -174,10 +174,11 @@ class _SvgSerializer {
     if (node.width > 0) {
       _buf.write('width="${_num(node.width * fontSize)}" ');
     }
+    final href = _escapeAttr(node.src);
     _buf
       ..write('preserveAspectRatio="none" ')
-      ..write('xlink:href="${_escapeAttr(node.src)}" ')
-      ..write('href="${_escapeAttr(node.src)}"')
+      ..write('xlink:href="$href" ')
+      ..write('href="$href"')
       ..write(node.alt.isEmpty ? '' : ' aria-label="${_escapeAttr(node.alt)}"')
       ..write('/>');
   }
@@ -206,26 +207,19 @@ class _SvgSerializer {
     // so the stroke sits inside the box (CSS border-box semantics).
     if (hasBox && node.borderWidth != null) {
       final bw = node.borderWidth! * fontSize;
-      final stroke = node.borderColor;
       _buf
         ..write('<rect ')
         ..write('x="${_num(bw / 2)}" y="${_num(top + bw / 2)}" ')
         ..write('width="${_num(w - bw)}" height="${_num(h - bw)}" ')
-        ..write('fill="none" ');
-      if (stroke != null && stroke.isNotEmpty) {
-        _buf.write('stroke="${_escapeAttr(stroke)}" ');
-      } else {
-        _buf.write('stroke="currentColor" ');
-      }
-      _buf.write('stroke-width="${_num(bw)}"/>');
+        ..write('fill="none" ')
+        ..write('stroke="${_strokeOr(node.borderColor)}" ')
+        ..write('stroke-width="${_num(bw)}"/>');
     }
 
     // Actuarial angle: a top border + a right border.
     if (hasActuarial && node.borderWidth != null) {
       final bw = node.borderWidth! * fontSize;
-      final stroke = (node.borderColor != null && node.borderColor!.isNotEmpty)
-          ? _escapeAttr(node.borderColor!)
-          : 'currentColor';
+      final stroke = _strokeOr(node.borderColor);
       // Top edge.
       _line(0, top + bw / 2, w, top + bw / 2, bw, stroke);
       // Right edge.
@@ -233,9 +227,7 @@ class _SvgSerializer {
     }
 
     // Strikes.
-    final strike = (node.strikeColor != null && node.strikeColor!.isNotEmpty)
-        ? _escapeAttr(node.strikeColor!)
-        : 'currentColor';
+    final strike = _strokeOr(node.strikeColor);
     const strokeW = 0.046; // em (KaTeX cancel stroke-width).
     final sw = strokeW * fontSize;
     if (node.notations.contains(EncloseNotation.updiagonalstrike)) {
@@ -486,9 +478,11 @@ class _SvgSerializer {
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;');
 
-  String _escapeAttr(String s) => s
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
+  String _escapeAttr(String s) => _escapeText(s).replaceAll('"', '&quot;');
+
+  /// The escaped stroke color for [color], or `currentColor` when it is null
+  /// or empty (matching CSS's inherited-color default for enclose strokes).
+  String _strokeOr(String? color) => (color != null && color.isNotEmpty)
+      ? _escapeAttr(color)
+      : 'currentColor';
 }

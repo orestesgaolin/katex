@@ -25,6 +25,8 @@ import 'package:katex/src/ast/parse_node.dart' hide KernNode, RuleNode;
 import 'package:katex/src/box/box_node.dart';
 import 'package:katex/src/build/build_common.dart';
 import 'package:katex/src/build/build_expression.dart';
+import 'package:katex/src/build/builders/delimiter_builders.dart'
+    show sizeToMaxHeight;
 import 'package:katex/src/build/options.dart';
 import 'package:katex/src/build/style.dart';
 import 'package:katex/src/svg/svg_geometry.g.dart' as geom;
@@ -34,10 +36,6 @@ import 'package:katex/src/types.dart';
 void registerSqrtBuilder(Map<String, GroupBuilder> registry) {
   registry['sqrt'] = (node, options) => _buildSqrt(node as SqrtNode, options);
 }
-
-// The four delimiter "large" sizes, in increasing max-height (KaTeX
-// `sizeToMaxHeight`). Index 0 is unused so `delim.size` is 1-based.
-const List<double> _sizeToMaxHeight = [0, 1.2, 1.8, 2.4, 3.0];
 
 // The `\surd` delimiter sequence (KaTeX `stackLargeDelimiterSequence`): the
 // Main glyph at three styles, then the four Size glyphs, then a stacked
@@ -139,7 +137,7 @@ _makeSurd(double height, double contentWidth, Options options) {
       advanceWidth = 0.833 / sizeMultiplier; // from the font.
     case _SurdKind.large:
       sqrtName = 'sqrtSize$largeSize';
-      final maxH = _sizeToMaxHeight[largeSize];
+      final maxH = sizeToMaxHeight[largeSize];
       viewBoxHeight = (1000 + _vbPad) * maxH;
       texHeight = (maxH + extraVinculum) / sizeMultiplier;
       advanceWidth = 1.0 / sizeMultiplier; // 1.0 from the font.

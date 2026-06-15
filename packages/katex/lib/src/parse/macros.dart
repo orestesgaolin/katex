@@ -518,8 +518,7 @@ Map<String, MacroDefinition> _defineBuiltinMacros() {
   //////////////////////////////////////////////////////////////////////
   // LaTeX source2e
 
-  // \DeclareRobustCommand\newline{\@normalcr\relax}
-  defineMacro(r'\newline', r'\\\relax');
+  // \newline is defined earlier alongside \\ (LaTeX2e \@normalcr\relax).
 
   // \DeclareRobustCommand\hspace{\@ifstar\@hspacer\@hspace}
   defineMacro(r'\hspace', r'\@ifstar\@hspacer\@hspace');

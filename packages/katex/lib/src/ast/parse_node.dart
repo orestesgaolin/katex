@@ -15,6 +15,7 @@
 /// sealed hierarchy makes that purely additive).
 library;
 
+import 'package:katex/src/parse/parse_error.dart';
 import 'package:katex/src/parse/source_location.dart';
 import 'package:katex/src/symbols/symbols.dart' show Group, MathClass;
 import 'package:katex/src/types.dart' show Mode;
@@ -100,6 +101,16 @@ sealed class ParseNode {
 
   /// The KaTeX node `type` string (e.g. `ordgroup`, `supsub`, `genfrac`).
   String get type;
+}
+
+/// Returns [node] cast to `T`, or throws a [ParseError] naming the expected
+/// [label] and the actual node `type`. Shared by the parser/function builders
+/// in place of one hand-written `_assert*` guard per node type.
+T assertNodeType<T extends ParseNode>(ParseNode node, String label) {
+  if (node is T) {
+    return node;
+  }
+  throw ParseError('Expected node of type $label, but got ${node.type}');
 }
 
 /// Marker for the symbol-token parse nodes that correspond to KaTeX symbol
@@ -336,6 +347,29 @@ final class OpNode extends ParseNode {
   /// Suppress the operator's base vertical shift, or `null`.
   final bool? suppressBaseShift;
 
+  /// Returns a copy of this node with the given fields replaced.
+  OpNode copyWith({
+    Mode? mode,
+    bool? limits,
+    bool? parentIsSupSub,
+    bool? symbol,
+    SourceLocation? loc,
+    String? name,
+    List<ParseNode>? body,
+    bool? alwaysHandleSupSub,
+    bool? suppressBaseShift,
+  }) => OpNode(
+    mode: mode ?? this.mode,
+    limits: limits ?? this.limits,
+    parentIsSupSub: parentIsSupSub ?? this.parentIsSupSub,
+    symbol: symbol ?? this.symbol,
+    loc: loc ?? this.loc,
+    name: name ?? this.name,
+    body: body ?? this.body,
+    alwaysHandleSupSub: alwaysHandleSupSub ?? this.alwaysHandleSupSub,
+    suppressBaseShift: suppressBaseShift ?? this.suppressBaseShift,
+  );
+
   @override
   String get type => 'op';
 }
@@ -363,6 +397,23 @@ final class OperatorNameNode extends ParseNode {
 
   /// Whether this is the base of a parent `supsub` node.
   final bool parentIsSupSub;
+
+  /// Returns a copy of this node with the given fields replaced.
+  OperatorNameNode copyWith({
+    Mode? mode,
+    List<ParseNode>? body,
+    bool? alwaysHandleSupSub,
+    bool? limits,
+    bool? parentIsSupSub,
+    SourceLocation? loc,
+  }) => OperatorNameNode(
+    mode: mode ?? this.mode,
+    body: body ?? this.body,
+    alwaysHandleSupSub: alwaysHandleSupSub ?? this.alwaysHandleSupSub,
+    limits: limits ?? this.limits,
+    parentIsSupSub: parentIsSupSub ?? this.parentIsSupSub,
+    loc: loc ?? this.loc,
+  );
 
   @override
   String get type => 'operatorname';
@@ -739,6 +790,35 @@ final class ArrayNode extends ParseNode {
 
   /// Whether equation numbers go on the left (`leqno`), or `null`.
   final bool? leqno;
+
+  /// Returns a copy of this node with the given fields replaced.
+  ArrayNode copyWith({
+    Mode? mode,
+    List<List<ParseNode>>? body,
+    List<Measurement?>? rowGaps,
+    List<List<bool>>? hLinesBeforeRow,
+    double? arraystretch,
+    SourceLocation? loc,
+    ColSeparationType? colSeparationType,
+    bool? hskipBeforeAndAfter,
+    bool? addJot,
+    List<AlignSpec>? cols,
+    List<Object>? tags,
+    bool? leqno,
+  }) => ArrayNode(
+    mode: mode ?? this.mode,
+    body: body ?? this.body,
+    rowGaps: rowGaps ?? this.rowGaps,
+    hLinesBeforeRow: hLinesBeforeRow ?? this.hLinesBeforeRow,
+    arraystretch: arraystretch ?? this.arraystretch,
+    loc: loc ?? this.loc,
+    colSeparationType: colSeparationType ?? this.colSeparationType,
+    hskipBeforeAndAfter: hskipBeforeAndAfter ?? this.hskipBeforeAndAfter,
+    addJot: addJot ?? this.addJot,
+    cols: cols ?? this.cols,
+    tags: tags ?? this.tags,
+    leqno: leqno ?? this.leqno,
+  );
 
   @override
   String get type => 'array';

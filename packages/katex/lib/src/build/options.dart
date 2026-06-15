@@ -127,6 +127,11 @@ class Options {
   /// The minimum rule (bar) thickness.
   final double minRuleThickness;
 
+  /// Clamps a rule [thickness] up to [minRuleThickness] (KaTeX floors every
+  /// fraction bar / frame / array rule at the configured minimum).
+  double floorRuleThickness(double thickness) =>
+      thickness > minRuleThickness ? thickness : minRuleThickness;
+
   /// Returns a new options object with the same properties as `this`, with the
   /// given non-null overrides applied. Mirrors KaTeX's `extend`.
   ///

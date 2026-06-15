@@ -8,7 +8,6 @@
 /// Everything else uses KaTeX's defaults.
 library;
 
-import 'package:katex/katex.dart' show ParseError;
 import 'package:katex/src/build/options.dart';
 import 'package:katex/src/build/style.dart';
 import 'package:katex/src/parse/parse_error.dart' show ParseError;

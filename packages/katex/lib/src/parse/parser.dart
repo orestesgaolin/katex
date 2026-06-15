@@ -307,20 +307,15 @@ class Parser {
     }
 
     final resolvedBase = _resolvedLimitsBase(base);
-    if (superscript != null && subscript != null) {
-      return SupSubNode(
-        mode: mode,
-        base: resolvedBase,
-        sup: superscript,
-        sub: subscript,
-      );
-    } else if (superscript != null) {
-      return SupSubNode(mode: mode, base: resolvedBase, sup: superscript);
-    } else if (subscript != null) {
-      return SupSubNode(mode: mode, base: resolvedBase, sub: subscript);
-    } else {
+    if (superscript == null && subscript == null) {
       return resolvedBase;
     }
+    return SupSubNode(
+      mode: mode,
+      base: resolvedBase,
+      sup: superscript,
+      sub: subscript,
+    );
   }
 
   // KaTeX mutates op/operatorname nodes in place to record \limits. Our AST
@@ -341,26 +336,9 @@ class Parser {
       return base;
     }
     if (base is OpNode) {
-      return OpNode(
-        mode: base.mode,
-        limits: override,
-        parentIsSupSub: base.parentIsSupSub,
-        symbol: base.symbol,
-        loc: base.loc,
-        name: base.name,
-        body: base.body,
-        alwaysHandleSupSub: true,
-        suppressBaseShift: base.suppressBaseShift,
-      );
+      return base.copyWith(limits: override, alwaysHandleSupSub: true);
     } else if (base is OperatorNameNode) {
-      return OperatorNameNode(
-        mode: base.mode,
-        body: base.body,
-        alwaysHandleSupSub: base.alwaysHandleSupSub,
-        limits: override,
-        parentIsSupSub: base.parentIsSupSub,
-        loc: base.loc,
-      );
+      return base.copyWith(limits: override);
     }
     return base;
   }
@@ -548,7 +526,7 @@ class Parser {
     }
     // Unescape backslash-escaped specials, matching KaTeX.
     final url = res.text.replaceAllMapped(
-      RegExp(r'\\([#$%&~_^{}])'),
+      _urlSpecialsRegex,
       (m) => m.group(1)!,
     );
     return RawNode(mode: mode, string: url);
@@ -578,15 +556,12 @@ class Parser {
     if (res == null) {
       return null;
     }
-    final match = RegExp(
-      r'^(#[a-f0-9]{3,4}|#[a-f0-9]{6}|#[a-f0-9]{8}|[a-f0-9]{6}|[a-z]+)$',
-      caseSensitive: false,
-    ).firstMatch(res.text);
+    final match = _colorRegex.firstMatch(res.text);
     if (match == null) {
       throw ParseError("Invalid color: '${res.text}'", res);
     }
     var color = match.group(0)!;
-    if (RegExp(r'^[0-9a-f]{6}$', caseSensitive: false).hasMatch(color)) {
+    if (_bareHexColorRegex.hasMatch(color)) {
       color = '#$color';
     }
     return ColorTokenNode(mode: mode, color: color);
@@ -598,10 +573,7 @@ class Parser {
     var isBlank = false;
     gullet.consumeSpaces();
     if (!optional && gullet.future().text != '{') {
-      res = parseRegexGroup(
-        RegExp(r'^[-+]? *(?:$|\d+|\d+\.\d*|\.\d*) *[a-z]{0,2} *$'),
-        'size',
-      );
+      res = parseRegexGroup(_sizeArgRegex, 'size');
     } else {
       res = parseStringGroup(optional);
     }
@@ -612,9 +584,7 @@ class Parser {
       res.text = '0pt';
       isBlank = true;
     }
-    final match = RegExp(
-      r'([-+]?) *(\d+(?:\.\d*)?|\.\d+) *([a-z]{2})',
-    ).firstMatch(res.text);
+    final match = _sizeMatchRegex.firstMatch(res.text);
     if (match == null) {
       throw ParseError("Invalid size: '${res.text}'", res);
     }
@@ -754,7 +724,7 @@ class Parser {
     final nucleus = fetch();
     var text = nucleus.text;
 
-    if (RegExp(r'^\\verb[^a-zA-Z]').hasMatch(text)) {
+    if (_verbRegex.hasMatch(text)) {
       consume();
       var arg = text.substring(5);
       final star = arg.startsWith('*');
@@ -881,6 +851,25 @@ bool _validUnit(String unit) {
   };
   return valid.contains(unit);
 }
+
+// Regexes used by the group parsers. Hoisted to file scope so they compile
+// once rather than on every parse call.
+final RegExp _urlSpecialsRegex = RegExp(r'\\([#$%&~_^{}])');
+final RegExp _colorRegex = RegExp(
+  r'^(#[a-f0-9]{3,4}|#[a-f0-9]{6}|#[a-f0-9]{8}|[a-f0-9]{6}|[a-z]+)$',
+  caseSensitive: false,
+);
+final RegExp _bareHexColorRegex = RegExp(
+  r'^[0-9a-f]{6}$',
+  caseSensitive: false,
+);
+final RegExp _sizeArgRegex = RegExp(
+  r'^[-+]? *(?:$|\d+|\d+\.\d*|\.\d*) *[a-z]{0,2} *$',
+);
+final RegExp _sizeMatchRegex = RegExp(
+  r'([-+]?) *(\d+(?:\.\d*)?|\.\d+) *([a-z]{2})',
+);
+final RegExp _verbRegex = RegExp(r'^\\verb[^a-zA-Z]');
 
 // Minimal map of combining diacritical marks to accent commands, mirroring
 // the MVP subset of KaTeX's `unicodeAccents`.

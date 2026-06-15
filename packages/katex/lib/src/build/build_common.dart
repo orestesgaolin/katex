@@ -220,6 +220,20 @@ SpanNode makeSpan(
 /// [HBox] itself).
 HBox makeFragment(List<BoxNode> children) => HBox(children);
 
+/// Wraps [elem] with optional leading ([left]) and trailing ([right]) kern
+/// margins, modelling KaTeX's `marginLeft`/`marginRight`. Returns [elem]
+/// unchanged when both margins are zero (no wrapper box is introduced).
+BoxNode withMargins(BoxNode elem, {double left = 0, double right = 0}) {
+  if (left == 0 && right == 0) {
+    return elem;
+  }
+  return makeFragment([
+    if (left != 0) KernNode(left),
+    elem,
+    if (right != 0) KernNode(right),
+  ]);
+}
+
 /// Makes a horizontal line (fraction bar / underline / overline rule) of the
 /// given [thickness] (defaulting to the font's default rule thickness, floored
 /// at `options.minRuleThickness`). Faithful port of KaTeX's `makeLineSpan`
@@ -228,9 +242,7 @@ HBox makeFragment(List<BoxNode> children) => HBox(children);
 RuleNode makeLineSpan(Options options, {double? thickness, double width = 0}) {
   final requested = thickness ?? options.fontMetrics().defaultRuleThickness;
   // KaTeX: max(thickness || defaultRuleThickness, minRuleThickness).
-  final height = requested > options.minRuleThickness
-      ? requested
-      : options.minRuleThickness;
+  final height = options.floorRuleThickness(requested);
   return RuleNode(width: width, height: height);
 }
 

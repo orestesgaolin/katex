@@ -15,6 +15,8 @@
 /// tree; consumers never need to recompute dimensions.
 library;
 
+import 'dart:math' as math;
+
 import 'package:katex/src/font/font_metrics.dart';
 import 'package:katex/src/font/font_types.dart';
 import 'package:meta/meta.dart';
@@ -35,7 +37,26 @@ sealed class BoxNode {
 
   /// Horizontal advance of the box, in em.
   double get width;
+
+  /// The `w/h/d` dimension triple formatted for [toString] (no enclosing
+  /// parentheses), shared by every box node's debug string.
+  String get _dims =>
+      'w: ${width.toStringAsFixed(4)}, '
+      'h: ${height.toStringAsFixed(4)}, '
+      'd: ${depth.toStringAsFixed(4)}';
 }
+
+/// Sum of the widths of [children] (horizontal advance of a row).
+double _sumWidth(List<BoxNode> children) =>
+    children.fold<double>(0, (sum, c) => sum + c.width);
+
+/// Greatest height among [children] (0 when empty).
+double _maxHeight(List<BoxNode> children) =>
+    children.fold<double>(0, (m, c) => math.max(m, c.height));
+
+/// Greatest depth among [children] (0 when empty).
+double _maxDepth(List<BoxNode> children) =>
+    children.fold<double>(0, (m, c) => math.max(m, c.depth));
 
 /// A single character drawn from a KaTeX font.
 ///
@@ -161,42 +182,17 @@ class HBox extends BoxNode {
   final List<BoxNode> children;
 
   @override
-  double get width {
-    var sum = 0.0;
-    for (final child in children) {
-      sum += child.width;
-    }
-    return sum;
-  }
+  double get width => _sumWidth(children);
 
   @override
-  double get height {
-    var max = 0.0;
-    for (final child in children) {
-      if (child.height > max) {
-        max = child.height;
-      }
-    }
-    return max;
-  }
+  double get height => _maxHeight(children);
 
   @override
-  double get depth {
-    var max = 0.0;
-    for (final child in children) {
-      if (child.depth > max) {
-        max = child.depth;
-      }
-    }
-    return max;
-  }
+  double get depth => _maxDepth(children);
 
   @override
   String toString() =>
-      'HBox(${children.length} children, '
-      'w: ${width.toStringAsFixed(4)}, '
-      'h: ${height.toStringAsFixed(4)}, '
-      'd: ${depth.toStringAsFixed(4)})';
+      'HBox(${children.length} children, $_dims)';
 }
 
 /// A fixed-width horizontal gap (kerning/glue).
@@ -462,10 +458,7 @@ class VList extends BoxNode {
 
   @override
   String toString() =>
-      'VList(${children.length} children, '
-      'w: ${width.toStringAsFixed(4)}, '
-      'h: ${height.toStringAsFixed(4)}, '
-      'd: ${depth.toStringAsFixed(4)})';
+      'VList(${children.length} children, $_dims)';
 }
 
 /// A filled rectangle: fraction bars, sqrt lines, underlines, etc.
@@ -487,9 +480,7 @@ class RuleNode extends BoxNode {
 
   @override
   String toString() =>
-      'RuleNode(w: ${width.toStringAsFixed(4)}, '
-      'h: ${height.toStringAsFixed(4)}, '
-      'd: ${depth.toStringAsFixed(4)})';
+      'RuleNode($_dims)';
 }
 
 /// A notation drawn by an [EncloseNode] (KaTeX `<menclose>` notations).
@@ -594,9 +585,7 @@ class EncloseNode extends BoxNode {
       '${backgroundColor != null ? ', bg: $backgroundColor' : ''}'
       '${borderColor != null ? ', border: $borderColor' : ''}'
       '${borderWidth != null ? ', bw: ${borderWidth!.toStringAsFixed(4)}' : ''}'
-      ', w: ${width.toStringAsFixed(4)}, '
-      'h: ${height.toStringAsFixed(4)}, '
-      'd: ${depth.toStringAsFixed(4)})';
+      ', $_dims)';
 }
 
 /// An external raster/vector image (`\includegraphics`).
@@ -634,10 +623,7 @@ class ImageNode extends BoxNode {
 
   @override
   String toString() =>
-      'ImageNode($src, '
-      'w: ${width.toStringAsFixed(4)}, '
-      'h: ${height.toStringAsFixed(4)}, '
-      'd: ${depth.toStringAsFixed(4)})';
+      'ImageNode($src, $_dims)';
 }
 
 /// A wrapper node carrying presentation metadata (color, classes, sizing).
@@ -670,44 +656,20 @@ class SpanNode extends BoxNode {
   final double sizeMultiplier;
 
   @override
-  double get width {
-    var sum = 0.0;
-    for (final child in children) {
-      sum += child.width;
-    }
-    return sum;
-  }
+  double get width => _sumWidth(children);
 
   @override
-  double get height {
-    var max = 0.0;
-    for (final child in children) {
-      if (child.height > max) {
-        max = child.height;
-      }
-    }
-    return max;
-  }
+  double get height => _maxHeight(children);
 
   @override
-  double get depth {
-    var max = 0.0;
-    for (final child in children) {
-      if (child.depth > max) {
-        max = child.depth;
-      }
-    }
-    return max;
-  }
+  double get depth => _maxDepth(children);
 
   @override
   String toString() =>
       'SpanNode(${children.length} children'
       '${color != null ? ', color: $color' : ''}'
       '${classes.isNotEmpty ? ', classes: $classes' : ''}, '
-      'w: ${width.toStringAsFixed(4)}, '
-      'h: ${height.toStringAsFixed(4)}, '
-      'd: ${depth.toStringAsFixed(4)})';
+      '$_dims)';
 }
 
 /// How an [SvgPathNode]'s viewBox maps onto its box (KaTeX's SVG
@@ -803,7 +765,5 @@ class SvgPathNode extends BoxNode {
   String toString() =>
       'SvgPathNode($pathName, '
       'vb: ${_n(viewBoxWidth)}x${_n(viewBoxHeight)}, '
-      'w: ${width.toStringAsFixed(4)}, '
-      'h: ${height.toStringAsFixed(4)}, '
-      'd: ${depth.toStringAsFixed(4)})';
+      '$_dims)';
 }

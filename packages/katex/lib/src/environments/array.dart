@@ -34,26 +34,14 @@ SymbolParseNode _assertSymbolNode(ParseNode node) {
   return sym;
 }
 
-TextOrdNode _assertTextord(ParseNode node) {
-  if (node is TextOrdNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type textord, but got ${node.type}');
-}
+TextOrdNode _assertTextord(ParseNode node) =>
+    assertNodeType(node, 'textord');
 
-OrdGroupNode _assertOrdgroup(ParseNode node) {
-  if (node is OrdGroupNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type ordgroup, but got ${node.type}');
-}
+OrdGroupNode _assertOrdgroup(ParseNode node) =>
+    assertNodeType(node, 'ordgroup');
 
-StylingNode _assertStyling(ParseNode node) {
-  if (node is StylingNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type styling, but got ${node.type}');
-}
+StylingNode _assertStyling(ParseNode node) =>
+    assertNodeType(node, 'styling');
 
 /// Reads `\hline`/`\hdashline` markers (each entry tells if it is dashed).
 List<bool> _getHLines(Parser parser) {
@@ -356,22 +344,11 @@ void _registerMatrix() {
           0,
           (max, row) => row.length > max ? row.length : max,
         );
-        final resWithCols = ArrayNode(
-          mode: res.mode,
-          body: res.body,
-          rowGaps: res.rowGaps,
-          hLinesBeforeRow: res.hLinesBeforeRow,
-          arraystretch: res.arraystretch,
-          addJot: res.addJot,
+        final resWithCols = res.copyWith(
           cols: List<AlignSpec>.generate(
             numCols,
             (_) => AlignSpec.align(colAlign),
           ),
-          hskipBeforeAndAfter: res.hskipBeforeAndAfter,
-          colSeparationType: res.colSeparationType,
-          tags: res.tags,
-          leqno: res.leqno,
-          loc: res.loc,
         );
         if (delimiters == null) {
           return resWithCols;
@@ -500,21 +477,11 @@ ArrayNode _alignedHandler(EnvContext context, List<ParseNode> args) {
     }
   }
 
-  return ArrayNode(
-    mode: res.mode,
-    body: res.body,
-    rowGaps: res.rowGaps,
-    hLinesBeforeRow: res.hLinesBeforeRow,
-    arraystretch: res.arraystretch,
-    addJot: res.addJot,
+  return res.copyWith(
     cols: cols,
-    hskipBeforeAndAfter: res.hskipBeforeAndAfter,
     colSeparationType: isAligned
         ? ColSeparationType.align
         : ColSeparationType.alignat,
-    tags: res.tags,
-    leqno: res.leqno,
-    loc: res.loc,
   );
 }
 

@@ -5,6 +5,8 @@
 /// lays out the table body.
 library;
 
+import 'dart:math' as math;
+
 import 'package:katex/src/ast/parse_node.dart' hide KernNode, RuleNode;
 import 'package:katex/src/box/box_node.dart';
 import 'package:katex/src/build/build_common.dart';
@@ -45,9 +47,7 @@ BoxNode _buildArray(ArrayNode group, Options options) {
   // From LaTeX \showthe\arrayrulewidth (= 0.04 em), floored at the user's
   // minRuleThickness override. Mirrors KaTeX's `ruleThickness`.
   final arrayRuleWidth = options.fontMetrics()['arrayRuleWidth'];
-  final ruleThickness = arrayRuleWidth > options.minRuleThickness
-      ? arrayRuleWidth
-      : options.minRuleThickness;
+  final ruleThickness = options.floorRuleThickness(arrayRuleWidth);
 
   final pt = 1 / options.fontMetrics().ptPerEm;
   var arraycolsep = 5 * pt;
@@ -91,12 +91,8 @@ BoxNode _buildArray(ArrayNode group, Options options) {
     final outrow = _Outrow(List<BoxNode?>.filled(inrow.length, null));
     for (var c = 0; c < inrow.length; c++) {
       final elt = buildGroup(inrow[c], options);
-      if (depth < elt.depth) {
-        depth = elt.depth;
-      }
-      if (height < elt.height) {
-        height = elt.height;
-      }
+      depth = math.max(depth, elt.depth);
+      height = math.max(height, elt.height);
       outrow.cells[c] = elt;
     }
 

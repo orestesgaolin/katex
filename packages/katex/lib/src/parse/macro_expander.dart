@@ -14,6 +14,10 @@ import 'package:katex/src/parse/source_location.dart';
 import 'package:katex/src/parse/token.dart';
 import 'package:katex/src/symbols/symbols.dart';
 
+/// Matches a single macro-parameter digit (`#1`..`#9`). Hoisted to file scope
+/// so it compiles once rather than on every parameter substitution.
+final RegExp _paramDigitRegex = RegExp(r'^[1-9]$');
+
 /// Commands that act like macros but aren't defined as a macro, function, or
 /// symbol. Used in [MacroExpander.isDefined].
 ///
@@ -349,7 +353,7 @@ class MacroExpander implements MacroContext {
           if (tok.text == '#') {
             // ## → #
             tokens.removeAt(i + 1); // drop first #
-          } else if (RegExp(r'^[1-9]$').hasMatch(tok.text)) {
+          } else if (_paramDigitRegex.hasMatch(tok.text)) {
             // replace the placeholder with the indicated argument
             final arg = args[int.parse(tok.text) - 1];
             tokens.replaceRange(i, i + 2, arg);

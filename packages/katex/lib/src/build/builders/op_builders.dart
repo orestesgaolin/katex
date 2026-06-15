@@ -223,11 +223,11 @@ BoxNode _buildOpSideSupSub(
       positionType: VListPositionType.individualShift,
       children: [
         VListChild.elem(
-          _withSideMargins(subm, left: subMarginLeft, right: marginRight),
+          withMargins(subm, left: subMarginLeft, right: marginRight),
           shift: subShift,
         ),
         VListChild.elem(
-          _withSideMargins(supm, right: marginRight),
+          withMargins(supm, right: marginRight),
           shift: -supShift,
         ),
       ],
@@ -243,7 +243,7 @@ BoxNode _buildOpSideSupSub(
       positionData: subShift,
       children: [
         VListChild.elem(
-          _withSideMargins(subm, left: subMarginLeft, right: marginRight),
+          withMargins(subm, left: subMarginLeft, right: marginRight),
         ),
       ],
     );
@@ -256,7 +256,7 @@ BoxNode _buildOpSideSupSub(
     supsub = makeVList(
       positionType: VListPositionType.shift,
       positionData: -supShift,
-      children: [VListChild.elem(_withSideMargins(supm, right: marginRight))],
+      children: [VListChild.elem(withMargins(supm, right: marginRight))],
     );
   } else {
     // No scripts: just the bare op.
@@ -334,10 +334,10 @@ BoxNode _assembleSupSub(
 
   // KaTeX centers the base, sup, and sub within the limits column (CSS
   // `.op-limits > .vlist-t { text-align: center }`). The slant margin is part
-  // of each limit's layout box, so we fold it in first (via _withLeftMargin)
+  // of each limit's layout box, so we fold it in first (via withMargins)
   // and then pad each row symmetrically to the column width.
-  final subRow = subElem == null ? null : _withLeftMargin(subElem, -slant);
-  final supRow = supElem == null ? null : _withLeftMargin(supElem, slant);
+  final subRow = subElem == null ? null : withMargins(subElem, left: -slant);
+  final supRow = supElem == null ? null : withMargins(supElem, left: slant);
   var colWidth = base.width;
   if (subRow != null && subRow.width > colWidth) {
     colWidth = subRow.width;
@@ -407,26 +407,4 @@ BoxNode _assembleSupSub(
   parts.add(finalGroup);
 
   return withAtomClass(makeFragment(parts), 'mop', options: options);
-}
-
-BoxNode _withLeftMargin(BoxNode elem, double margin) {
-  if (margin == 0) {
-    return elem;
-  }
-  return makeFragment([KernNode(margin), elem]);
-}
-
-// Wraps [elem] with optional leading ([left]) and trailing ([right]) kerns,
-// modelling KaTeX's `marginLeft`/`marginRight` on a side-script vlist child:
-// `left` is the negative base-italic cancellation for the subscript, `right`
-// is the scriptspace gap appended to every script row.
-BoxNode _withSideMargins(BoxNode elem, {double left = 0, double right = 0}) {
-  if (left == 0 && right == 0) {
-    return elem;
-  }
-  return makeFragment([
-    if (left != 0) KernNode(left),
-    elem,
-    if (right != 0) KernNode(right),
-  ]);
 }

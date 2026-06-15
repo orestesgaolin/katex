@@ -74,26 +74,13 @@ void ensureRegistered() {
 // ---------------------------------------------------------------------------
 
 /// Asserts [node] is a [TextOrdNode] and returns it.
-TextOrdNode _assertTextord(ParseNode node) {
-  if (node is TextOrdNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type textord, but got ${node.type}');
-}
+TextOrdNode _assertTextord(ParseNode node) =>
+    assertNodeType(node, 'textord');
 
-SizeNode _assertSize(ParseNode node) {
-  if (node is SizeNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type size, but got ${node.type}');
-}
+SizeNode _assertSize(ParseNode node) => assertNodeType(node, 'size');
 
-ColorTokenNode _assertColorToken(ParseNode node) {
-  if (node is ColorTokenNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type color-token, but got ${node.type}');
-}
+ColorTokenNode _assertColorToken(ParseNode node) =>
+    assertNodeType(node, 'color-token');
 
 /// Returns [node] if it is a symbol parse node, else `null`.
 SymbolParseNode? _checkSymbolNode(ParseNode? node) =>
@@ -741,21 +728,22 @@ void _registerDelimiters() {
 // accent.ts
 // ---------------------------------------------------------------------------
 
-final RegExp _nonStretchyAccentRegex = RegExp(
-  <String>[
-    r'\\acute',
-    r'\\grave',
-    r'\\ddot',
-    r'\\tilde',
-    r'\\bar',
-    r'\\breve',
-    r'\\check',
-    r'\\hat',
-    r'\\vec',
-    r'\\dot',
-    r'\\mathring',
-  ].join('|'),
-);
+// The accents that are NOT stretchy (drawn from a fixed glyph rather than a
+// stretchy SVG path). KaTeX uses a regex here, but for our fixed accent-name
+// domain exact set membership is equivalent and cheaper.
+const Set<String> _nonStretchyAccents = <String>{
+  r'\acute',
+  r'\grave',
+  r'\ddot',
+  r'\tilde',
+  r'\bar',
+  r'\breve',
+  r'\check',
+  r'\hat',
+  r'\vec',
+  r'\dot',
+  r'\mathring',
+};
 
 void _registerAccent() {
   // Math accents.
@@ -789,7 +777,7 @@ void _registerAccent() {
       numArgs: 1,
       handler: (context, args, optArgs) {
         final base = normalizeArgument(args[0]);
-        final isStretchy = !_nonStretchyAccentRegex.hasMatch(context.funcName);
+        final isStretchy = !_nonStretchyAccents.contains(context.funcName);
         final isShifty =
             !isStretchy ||
             context.funcName == r'\widehat' ||
@@ -2131,7 +2119,7 @@ void _registerPmb() {
       handler: (context, args, optArgs) {
         return PmbNode(
           mode: context.parser.mode,
-          mclass: _pmbBinrelClass(args[0]),
+          mclass: _binrelClass(args[0]),
           body: ordargument(args[0]),
         );
       },
@@ -2140,15 +2128,6 @@ void _registerPmb() {
 }
 
 // Mirrors KaTeX `mclass.binrelClass`.
-MathClass _pmbBinrelClass(ParseNode arg) {
-  final atom = arg is OrdGroupNode && arg.body.isNotEmpty ? arg.body[0] : arg;
-  if (atom is AtomNode &&
-      (atom.family == Group.bin || atom.family == Group.rel)) {
-    return atom.family == Group.bin ? MathClass.mbin : MathClass.mrel;
-  }
-  return MathClass.mord;
-}
-
 // ---------------------------------------------------------------------------
 // hbox.ts — \hbox (compatibility with \vcenter)
 // ---------------------------------------------------------------------------
@@ -2252,12 +2231,7 @@ void _registerMath() {
   );
 }
 
-RawNode _assertRaw(ParseNode node) {
-  if (node is RawNode) {
-    return node;
-  }
-  throw ParseError('Expected node of type raw, but got ${node.type}');
-}
+RawNode _assertRaw(ParseNode node) => assertNodeType(node, 'raw');
 
 // \url / \href arg (ArgType.url) is delivered as a RawNode carrying the URL
 // string (KaTeX uses a dedicated url node; the string is all we need here).

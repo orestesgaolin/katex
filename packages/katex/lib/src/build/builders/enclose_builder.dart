@@ -97,15 +97,11 @@ BoxNode _buildEnclose(ast.EncloseParseNode group, Options options) {
   double bottomPad;
   var ruleThickness = 0.0;
   if (label.contains('box')) {
-    ruleThickness = metrics.fboxrule > options.minRuleThickness
-        ? metrics.fboxrule
-        : options.minRuleThickness;
+    ruleThickness = options.floorRuleThickness(metrics.fboxrule);
     topPad = metrics.fboxsep + (label == 'colorbox' ? 0 : ruleThickness);
     bottomPad = topPad;
   } else if (label == 'angl') {
-    ruleThickness = metrics.defaultRuleThickness > options.minRuleThickness
-        ? metrics.defaultRuleThickness
-        : options.minRuleThickness;
+    ruleThickness = options.floorRuleThickness(metrics.defaultRuleThickness);
     topPad = 4 * ruleThickness; // gap = 3 × line, plus the line itself.
     final remaining = 0.25 - inner.depth;
     bottomPad = remaining > 0 ? remaining : 0;

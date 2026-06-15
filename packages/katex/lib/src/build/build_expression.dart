@@ -190,7 +190,7 @@ List<BoxNode> buildExpression(
     if (node is SizingNode) {
       glueOptions = options.havingSize(node.size);
     } else if (node is StylingNode) {
-      glueOptions = options.havingStyle(_styleFromStr(node.style));
+      glueOptions = options.havingStyle(Style.fromStr(node.style));
     }
   }
 
@@ -428,15 +428,3 @@ BoxNode _makeGlue(Mu space, Options options) {
 }
 
 /// Maps a parse-node [StyleStr] to a build [Style].
-Style _styleFromStr(StyleStr style) {
-  switch (style) {
-    case StyleStr.display:
-      return Style.DISPLAY;
-    case StyleStr.text:
-      return Style.TEXT;
-    case StyleStr.script:
-      return Style.SCRIPT;
-    case StyleStr.scriptscript:
-      return Style.SCRIPTSCRIPT;
-  }
-}

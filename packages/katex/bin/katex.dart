@@ -48,16 +48,28 @@ void main(List<String> args) {
       help: 'Print this usage information.',
     );
 
-  ArgResults results;
-  try {
-    results = parser.parse(args);
-  } on FormatException catch (e) {
+  // Prints `katex: <message>` to stderr and sets [exitCode]; the caller then
+  // returns. (A helper can't return from `main`.)
+  void fail(String message, int code) {
+    stderr.writeln('katex: $message');
+    exitCode = code;
+  }
+
+  // As [fail], but follows the message with the full usage text (EX_USAGE).
+  void usageError(String message) {
     stderr
-      ..writeln('katex: ${e.message}')
+      ..writeln('katex: $message')
       ..writeln()
       ..writeln(_usageHeader)
       ..writeln(parser.usage);
     exitCode = 64; // EX_USAGE
+  }
+
+  ArgResults results;
+  try {
+    results = parser.parse(args);
+  } on FormatException catch (e) {
+    usageError(e.message);
     return;
   }
 
@@ -70,20 +82,15 @@ void main(List<String> args) {
 
   final rest = results.rest;
   if (rest.isEmpty) {
-    stderr
-      ..writeln('katex: missing TeX expression argument.')
-      ..writeln()
-      ..writeln(_usageHeader)
-      ..writeln(parser.usage);
-    exitCode = 64; // EX_USAGE
+    usageError('missing TeX expression argument.');
     return;
   }
   if (rest.length > 1) {
-    stderr.writeln(
-      'katex: expected a single TeX expression, got ${rest.length} '
-      'positional arguments. Quote the expression as one argument.',
+    fail(
+      'expected a single TeX expression, got ${rest.length} positional '
+      'arguments. Quote the expression as one argument.',
+      64, // EX_USAGE
     );
-    exitCode = 64; // EX_USAGE
     return;
   }
 
@@ -95,11 +102,10 @@ void main(List<String> args) {
   if (fontSizeArg != null) {
     final parsed = double.tryParse(fontSizeArg);
     if (parsed == null || parsed <= 0 || !parsed.isFinite) {
-      stderr.writeln(
-        'katex: invalid --font-size "$fontSizeArg" (expected a positive '
-        'number).',
+      fail(
+        'invalid --font-size "$fontSizeArg" (expected a positive number).',
+        64, // EX_USAGE
       );
-      exitCode = 64; // EX_USAGE
       return;
     }
     fontSize = parsed;
@@ -115,12 +121,10 @@ void main(List<String> args) {
   try {
     svg = renderToSvg(tex, options: options);
   } on ParseError catch (e) {
-    stderr.writeln('katex: ${e.message}');
-    exitCode = 65; // EX_DATAERR
+    fail(e.message, 65); // EX_DATAERR
     return;
   } on Object catch (e) {
-    stderr.writeln('katex: failed to render expression: $e');
-    exitCode = 70; // EX_SOFTWARE
+    fail('failed to render expression: $e', 70); // EX_SOFTWARE
     return;
   }
 
@@ -129,8 +133,8 @@ void main(List<String> args) {
     try {
       File(outputPath).writeAsStringSync(svg);
     } on FileSystemException catch (e) {
-      stderr.writeln('katex: could not write to "$outputPath": ${e.message}');
-      exitCode = 73; // EX_CANTCREAT
+      // EX_CANTCREAT
+      fail('could not write to "$outputPath": ${e.message}', 73);
       return;
     }
   } else {
