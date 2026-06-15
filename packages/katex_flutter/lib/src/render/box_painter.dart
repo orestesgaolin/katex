@@ -396,6 +396,46 @@ class KatexBoxPainter extends CustomPainter {
     final bottom = baselineY + node.depth * fontSize;
     final left = x;
     final right = x + node.width * fontSize;
+    if (node.isDashed) {
+      // Dashed line down the long axis (`:` / `\hdashline`). Stroke width = the
+      // thin dimension; dash cadence ~3× the stroke (browser-default look).
+      final w = right - left;
+      final h = bottom - top;
+      final isVertical = h >= w;
+      final sw = isVertical ? w : h;
+      final dash = sw * 3;
+      final paint = Paint()
+        ..color = currentColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = sw;
+      final double sx;
+      final double sy;
+      final double ex;
+      final double ey;
+      if (isVertical) {
+        sx = ex = left + w / 2;
+        sy = top;
+        ey = bottom;
+      } else {
+        sy = ey = top + h / 2;
+        sx = left;
+        ex = right;
+      }
+      final total = isVertical ? (ey - sy) : (ex - sx);
+      final dx = isVertical ? 0.0 : 1.0;
+      final dy = isVertical ? 1.0 : 0.0;
+      var pos = 0.0;
+      while (pos < total) {
+        final segEnd = (pos + dash).clamp(0.0, total);
+        canvas.drawLine(
+          Offset(sx + dx * pos, sy + dy * pos),
+          Offset(sx + dx * segEnd, sy + dy * segEnd),
+          paint,
+        );
+        pos += dash * 2; // dash + equal gap
+      }
+      return;
+    }
     final paint = Paint()
       ..color = currentColor
       ..style = PaintingStyle.fill;

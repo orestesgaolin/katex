@@ -467,7 +467,12 @@ class VList extends BoxNode {
 @immutable
 class RuleNode extends BoxNode {
   /// Creates a rule of the given explicit [width]/[height]/[depth] (em).
-  const RuleNode({required this.width, required this.height, this.depth = 0});
+  const RuleNode({
+    required this.width,
+    required this.height,
+    this.depth = 0,
+    this.isDashed = false,
+  });
 
   @override
   final double width;
@@ -478,9 +483,14 @@ class RuleNode extends BoxNode {
   @override
   final double depth;
 
+  /// When true, the rule is drawn as a dashed line rather than a solid filled
+  /// rectangle (used for `\hdashline` and the `:` array column separator,
+  /// which KaTeX renders with a CSS `dashed` border).
+  final bool isDashed;
+
   @override
   String toString() =>
-      'RuleNode($_dims)';
+      'RuleNode($_dims${isDashed ? ', dashed' : ''})';
 }
 
 /// A notation drawn by an [EncloseNode] (KaTeX `<menclose>` notations).

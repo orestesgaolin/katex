@@ -159,11 +159,12 @@ BoxNode _buildArray(ArrayNode group, Options options) {
       // The array box spans box-y from `-offset` (top) to
       // `totalHeight - offset` (bottom); a full-height separator therefore has
       // height `offset` and depth `totalHeight - offset`. `:` renders dashed in
-      // KaTeX, but the box tree has no dash primitive, so it falls back solid.
+      // KaTeX (CSS `border-right: dashed`); `|` is solid.
       final separator = RuleNode(
         width: ruleThickness,
         height: offset,
         depth: totalHeight - offset,
+        isDashed: colDescr.separator == ':',
       );
       cols.add(
         makeSpan(
@@ -250,10 +251,14 @@ BoxNode _buildArray(ArrayNode group, Options options) {
     final arrayWidth = tableBody.width;
     final vListElems = <VListChild>[VListChild.elem(tableBody)];
     for (final hline in hlines) {
-      // A horizontal rule (`makeLineSpan`) of full array width, `ruleThickness`
-      // tall, sitting at the gap position. `:`/\hdashline has no dash primitive
-      // in the box tree, so it renders as a solid rule too.
-      final rule = RuleNode(width: arrayWidth, height: ruleThickness);
+      // A horizontal rule of full array width, `ruleThickness` tall, sitting at
+      // the gap position. `\hdashline` draws dashed (KaTeX `makeLineSpan
+      // ("hdashline")` = CSS dashed border); `\hline` is solid.
+      final rule = RuleNode(
+        width: arrayWidth,
+        height: ruleThickness,
+        isDashed: hline.isDashed,
+      );
       vListElems.add(VListChild.elem(rule, shift: hline.pos - offset));
     }
     tableBody = makeVList(

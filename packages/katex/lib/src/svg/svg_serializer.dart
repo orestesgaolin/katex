@@ -320,6 +320,32 @@ class _SvgSerializer {
     // The rule spans from `height` above the baseline to `depth` below it; its
     // top edge sits at y = -height.
     final y = -node.height * fontSize;
+    if (node.isDashed) {
+      // A dashed line down the rule's long axis (KaTeX renders `:`/`\hdashline`
+      // as a CSS `dashed` border). Stroke width = the thin dimension; the dash
+      // cadence is ~3× the stroke, matching the browser default look.
+      final isVertical = h >= w;
+      final sw = isVertical ? w : h;
+      final dash = _num(sw * 3);
+      final String x1;
+      final String y1;
+      final String x2;
+      final String y2;
+      if (isVertical) {
+        x1 = x2 = _num(w / 2);
+        y1 = _num(y);
+        y2 = _num(y + h);
+      } else {
+        y1 = y2 = _num(y + h / 2);
+        x1 = '0';
+        x2 = _num(w);
+      }
+      _buf
+        ..write('<line x1="$x1" y1="$y1" x2="$x2" y2="$y2" ')
+        ..write('stroke="currentColor" stroke-width="${_num(sw)}" ')
+        ..write('stroke-dasharray="$dash,$dash"/>');
+      return;
+    }
     _buf
       ..write('<rect x="0" y="${_num(y)}" ')
       ..write('width="${_num(w)}" height="${_num(h)}"/>');
