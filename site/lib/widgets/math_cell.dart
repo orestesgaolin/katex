@@ -8,19 +8,33 @@ library;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:katex_dart/katex_dart.dart';
 import 'package:katex/katex.dart';
-import 'package:katex_flutter/katex_flutter.dart';
 
 class MathCell extends StatelessWidget {
   const MathCell({
     required this.tex,
     required this.displayMode,
     required this.heightPx,
+    this.animation = 'none',
+    this.stepMillis = 0,
     super.key,
   });
 
   final String tex;
   final bool displayMode;
+
+  /// The reveal animation to play, as a [MathAnimationMode] name
+  /// (`'none'`, `'leftToRight'`, `'rightToLeft'`, `'fadeIn'`). Passed as a
+  /// string so the Jaspr server prerender never references the Flutter enum.
+  ///
+  /// When not `'none'` the cell renders with [AnimatedMath] (a live paint that
+  /// animates on mount); otherwise it uses the crisp oversampled still image.
+  final String animation;
+
+  /// When > 0, paces the reveal at one element per [stepMillis] milliseconds
+  /// (passed as [AnimatedMath.stepDuration]); 0 uses the default fast reveal.
+  final int stepMillis;
 
   /// The math's full pixel height (height + depth + slack) — see
   /// `math_metrics.mathCellHeightPx`. The widget lays out an explicit
@@ -49,14 +63,28 @@ class MathCell extends StatelessWidget {
     // The math goes through [_OversampledMath], which paints the box tree at a
     // higher resolution and draws it back down to the 1× display size — see
     // that widget for why this is needed for the embedded CanvasKit column.
+    final mode = _animationMode(animation);
     final Widget math = SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: _OversampledMath(
-        tex: tex,
-        displayMode: displayMode,
-        fontSize: _kEmPx,
-      ),
+      // An animated reveal needs a live, per-frame paint, so it bypasses the
+      // oversampled still image (used for the crisp static comparison) and
+      // paints directly via AnimatedMath. The animation plays on mount; the
+      // editor remounts this view (via its ValueKey) to replay.
+      child: mode == MathAnimationMode.none
+          ? _OversampledMath(
+              tex: tex,
+              displayMode: displayMode,
+              fontSize: _kEmPx,
+            )
+          : AnimatedMath(
+              tex,
+              mode: mode,
+              stepDuration:
+                  stepMillis > 0 ? Duration(milliseconds: stepMillis) : null,
+              displayMode: displayMode,
+              fontSize: _kEmPx,
+            ),
     );
 
     // Vertical centering + clip-free painting:
@@ -98,6 +126,22 @@ class MathCell extends StatelessWidget {
         body: body,
       ),
     );
+  }
+
+  /// Maps a [MathAnimationMode] name (passed from the Jaspr layer as a string)
+  /// to the enum, defaulting to [MathAnimationMode.none] for unknown values.
+  static MathAnimationMode _animationMode(String name) {
+    switch (name) {
+      case 'leftToRight':
+        return MathAnimationMode.leftToRight;
+      case 'rightToLeft':
+        return MathAnimationMode.rightToLeft;
+      case 'fadeIn':
+        return MathAnimationMode.fadeIn;
+      case 'none':
+      default:
+        return MathAnimationMode.none;
+    }
   }
 }
 

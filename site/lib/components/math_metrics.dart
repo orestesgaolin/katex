@@ -14,7 +14,7 @@
 /// view's `minHeight` so the grid row is never shorter than the math.
 library;
 
-import 'package:katex/katex.dart';
+import 'package:katex_dart/katex_dart.dart';
 
 /// Logical px per em — must match `MathCell._kEmPx` (the KaTeX-JS scale,
 /// `1.21em × 16px` browser default).

@@ -16,7 +16,7 @@ library;
 
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
-import 'package:katex/katex.dart';
+import 'package:katex_dart/katex_dart.dart';
 
 /// Matches the leading `<defs>…</defs>` block that carries the embedded
 /// `@font-face` data-URIs (non-greedy, single block at the start of the SVG).

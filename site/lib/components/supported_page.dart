@@ -20,7 +20,7 @@ library;
 
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
-import 'package:katex/katex.dart';
+import 'package:katex_dart/katex_dart.dart';
 
 import 'dart_svg.dart';
 import 'gh_issue.dart';

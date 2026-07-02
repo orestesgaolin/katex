@@ -45,7 +45,7 @@ class App extends StatelessComponent {
           .text(' (ground truth) · '),
           strong([.text('katex')]),
           .text(' Dart → SVG · '),
-          strong([.text('katex_flutter')]),
+          strong([.text('katex')]),
           .text(' Math widget (Flutter web, one engine per row).'),
         ]),
         div(classes: 'legend', [
@@ -105,7 +105,7 @@ class App extends StatelessComponent {
           div(classes: 'col-head source-head', [.text('TeX source')]),
           div(classes: 'col-head', [.text('KaTeX JS')]),
           div(classes: 'col-head', [.text('katex Dart SVG')]),
-          div(classes: 'col-head', [.text('katex_flutter')]),
+          div(classes: 'col-head', [.text('katex')]),
         ]),
         for (final ExampleGroup group in kGroups)
           .fragment([

@@ -7,5 +7,13 @@ dynamic mathCellWidget(
   String tex, {
   required bool displayMode,
   int heightPx = 0,
+  String animation = 'none',
+  int stepMillis = 0,
 }) =>
-    MathCell(tex: tex, displayMode: displayMode, heightPx: heightPx);
+    MathCell(
+      tex: tex,
+      displayMode: displayMode,
+      heightPx: heightPx,
+      animation: animation,
+      stepMillis: stepMillis,
+    );

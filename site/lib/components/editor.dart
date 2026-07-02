@@ -99,6 +99,53 @@ class Editor extends StatefulComponent {
             color: const Color('#333'),
             fontSize: 0.85.rem,
           ),
+          // Reveal-animation controls (katex_flutter cell only).
+          css('.anim-controls').styles(
+            display: Display.flex,
+            margin: Margin.only(bottom: 16.px),
+            flexWrap: FlexWrap.wrap,
+            alignItems: AlignItems.center,
+            gap: Gap.all(10.px),
+          ),
+          css('.anim-label').styles(
+            color: const Color('#555'),
+            fontSize: 0.82.rem,
+            fontWeight: FontWeight.bold,
+          ),
+          css('.anim-segmented', [
+            css('&').styles(
+              display: Display.flex,
+              radius: BorderRadius.circular(6.px),
+              border: Border.all(color: const Color('#bbb'), width: 1.px),
+              overflow: Overflow.hidden,
+            ),
+            css('.anim-btn').styles(
+              padding: Padding.symmetric(horizontal: 10.px, vertical: 6.px),
+              border: Border.unset,
+              cursor: Cursor.pointer,
+              color: const Color('#333'),
+              fontSize: 0.8.rem,
+              backgroundColor: const Color('#fff'),
+            ),
+            css('.anim-btn + .anim-btn').styles(
+              border: Border.only(
+                left: BorderSide(color: const Color('#ddd'), width: 1.px),
+              ),
+            ),
+            css('.anim-btn.active').styles(
+              color: const Color('#fff'),
+              backgroundColor: const Color('#3b82f6'),
+            ),
+          ]),
+          css('.anim-replay').styles(
+            padding: Padding.symmetric(horizontal: 12.px, vertical: 6.px),
+            border: Border.all(color: const Color('#bbb'), width: 1.px),
+            radius: BorderRadius.circular(6.px),
+            cursor: Cursor.pointer,
+            color: const Color('#333'),
+            fontSize: 0.8.rem,
+            backgroundColor: const Color('#fff'),
+          ),
           // Three side-by-side preview cells (collapse to a column when narrow).
           css('.editor-outputs').styles(
             display: Display.grid,
@@ -148,9 +195,29 @@ class Editor extends StatefulComponent {
       ];
 }
 
+/// The reveal-animation modes offered for the `katex_flutter` cell, as
+/// `(MathAnimationMode name, human label)` pairs. The name string is threaded
+/// to the Flutter widget (see `MathCell.animation`).
+const List<({String name, String label})> _animationModes = [
+  (name: 'none', label: 'None'),
+  (name: 'leftToRight', label: 'Left → right'),
+  (name: 'rightToLeft', label: 'Right → left'),
+  (name: 'fadeIn', label: 'Fade in'),
+];
+
 class _EditorState extends State<Editor> {
   late String _tex = component.initialTex;
   bool _displayMode = true;
+
+  /// Selected reveal animation for the `katex_flutter` preview.
+  String _animation = 'leftToRight';
+
+  /// When true, the reveal is paced at one element per second (step mode).
+  bool _slow = false;
+
+  /// Bumped by the Replay button to remount the embed and re-run the reveal.
+  int _replayNonce = 0;
+
   Timer? _debounce;
 
   // The KaTeX-JS render targets a real DOM node we own.
@@ -181,6 +248,25 @@ class _EditorState extends State<Editor> {
   void _toggleDisplay(bool value) {
     setState(() => _displayMode = value);
     _renderJs();
+  }
+
+  /// Select a reveal animation; remounting the embed (its key includes
+  /// [_animation]) replays it.
+  void _selectAnimation(String name) {
+    if (name == _animation) {
+      return;
+    }
+    setState(() => _animation = name);
+  }
+
+  void _toggleSlow(bool value) {
+    setState(() => _slow = value);
+  }
+
+  /// Replay the current reveal by bumping the nonce in the embed's key, which
+  /// forces a fresh mount (and the animation auto-plays on mount).
+  void _replay() {
+    setState(() => _replayNonce++);
   }
 
   /// (Re)render the KaTeX-JS preview into the host node imperatively, since
@@ -261,15 +347,54 @@ class _EditorState extends State<Editor> {
           [.text('⚠ report issue with this input')],
         ),
       ]),
+      // Reveal-animation controls — apply to the katex_flutter cell only.
+      div(classes: 'anim-controls', [
+        span(classes: 'anim-label', [.text('katex_flutter reveal:')]),
+        div(classes: 'anim-segmented', [
+          for (final m in _animationModes)
+            button(
+              classes: m.name == _animation ? 'anim-btn active' : 'anim-btn',
+              attributes: {
+                'type': 'button',
+                if (m.name == _animation) 'aria-pressed': 'true',
+              },
+              onClick: () => _selectAnimation(m.name),
+              [.text(m.label)],
+            ),
+        ]),
+        label(classes: 'editor-toggle', [
+          input<bool>(
+            type: InputType.checkbox,
+            checked: _slow,
+            attributes: _animation == 'none' || _animation == 'fadeIn'
+                ? const {'disabled': ''}
+                : const {},
+            onChange: _toggleSlow,
+          ),
+          .text(' slow (1 elem/sec)'),
+        ]),
+        button(
+          classes: 'anim-replay',
+          attributes: const {
+            'type': 'button',
+            'title': 'Replay the reveal animation',
+          },
+          onClick: _replay,
+          [.text('↻ Replay')],
+        ),
+      ]),
       div(classes: 'editor-outputs', [
         _outputCell('KaTeX JS', div(key: _jsHostKey, classes: 'katex-js', [])),
         _outputCell('katex Dart SVG', _svgPreview()),
         _outputCell(
-          'katex_flutter',
+          'katex',
           FlutterEmbedView(
-            // Keyed by the rendered string + mode so the embedded view rebuilds
-            // its widget whenever the input changes.
-            key: ValueKey<String>('$_displayMode|$_tex'),
+            // Keyed by the rendered string + display mode + reveal animation +
+            // replay nonce, so the embedded view remounts (and re-runs the
+            // reveal) whenever any of them changes.
+            key: ValueKey<String>(
+              '$_displayMode|$_animation|$_slow|$_replayNonce|$_tex',
+            ),
             // Pin the view height to the input's full math height so the
             // multi-view scene isn't bottom-clipped (same fix as the rows).
             constraints: ViewConstraints(
@@ -278,7 +403,12 @@ class _EditorState extends State<Editor> {
               maxHeight:
                   mathCellHeightPx(_tex, displayMode: _displayMode).toDouble(),
             ),
-            widget: mathCellWidget(_tex, displayMode: _displayMode),
+            widget: mathCellWidget(
+              _tex,
+              displayMode: _displayMode,
+              animation: _animation,
+              stepMillis: _slow ? 1000 : 0,
+            ),
             loader: div(classes: 'flutter-loading', const []),
           ),
         ),

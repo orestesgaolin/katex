@@ -12,10 +12,10 @@ dependencies:
   jaspr: ^0.23.1
   jaspr_flutter_embed: ^0.4.11
   jaspr_router: ^0.8.2
+  katex_dart:
+    path: ../packages/katex_dart
   katex:
     path: ../packages/katex
-  katex_flutter:
-    path: ../packages/katex_flutter
   universal_web: ^1.1.1
 
 dev_dependencies:
