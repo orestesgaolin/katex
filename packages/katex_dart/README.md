@@ -19,6 +19,11 @@ void main() {
 
   // Self-contained SVG (KaTeX fonts embedded via @font-face).
   final svg = renderToSvg(r'\sum_{i=0}^n i', options: const KatexOptions(displayMode: true));
+
+  // Wrap a long expression: `maxWidth` is a budget in EM, and breaks land only
+  // at TeX's opportunities — after a top-level binary operator or relation, or
+  // an explicit \allowbreak. The root is then a VList of lines.
+  final wrapped = renderToBox(r'a + b + c = d + e + f', options: const KatexOptions(maxWidth: 8));
 }
 ```
 

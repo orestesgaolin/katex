@@ -28,6 +28,7 @@ class KatexOptions {
     this.strict = false,
     this.minRuleThickness = 0.0,
     this.maxSize = double.infinity,
+    this.maxWidth = double.infinity,
   });
 
   /// Whether to typeset as display math (`true`) or inline math (`false`,
@@ -59,6 +60,24 @@ class KatexOptions {
 
   /// Cap on user-specified sizes in em, mirroring KaTeX's `maxSize`.
   final double maxSize;
+
+  /// Width budget for **automatic line breaking**, in em. `double.infinity`
+  /// (the default) never wraps.
+  ///
+  /// When finite, a long expression is wrapped onto as many lines as it needs,
+  /// breaking only at TeX's break opportunities — after a top-level binary
+  /// operator (`+`, `-`, `\times`, …), a top-level relation (`=`, `<`,
+  /// `\rightarrow`, …), or an explicit `\allowbreak`. `\nobreak` (and `~`)
+  /// suppresses the opportunity next to it, and nothing inside `{...}`, a
+  /// fraction, or a `\left…\right` pair is ever broken. A run with no
+  /// opportunity in it (a single long `\frac`, say) cannot be split and will
+  /// overflow the budget rather than be cut.
+  ///
+  /// **Units:** em, like everything else in the box tree — *not* pixels.
+  /// Divide your pixel budget by the px-per-em you render at:
+  /// `maxWidth: availableWidthPx / fontSizePx`. (The `katex` Flutter widget's
+  /// `Math(softWrap: true)` does this conversion for you.)
+  final double maxWidth;
 
   /// Maps these options to the internal parser [Settings].
   Settings toSettings() => Settings(

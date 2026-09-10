@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:katex_dart/katex_dart.dart';
 import 'package:test/test.dart';
 
@@ -239,6 +241,135 @@ void main() {
           isEmpty,
           reason: 'no array rules expected in $tex',
         );
+      }
+    });
+  });
+
+  // Column alignment (`col-align-{l,c,r}`).
+  //
+  // KaTeX emits HTML and lets the CSS class `col-align-*` (`text-align`) do the
+  // horizontal alignment. The box tree has no CSS, so the builder has to apply
+  // that offset geometrically. It previously did not: every cell was placed
+  // flush at x=0, so all columns rendered left-aligned — the `&` anchor in
+  // align/aligned did not line up and matrix columns were not centered.
+  //
+  // These cases use RAGGED columns (cells of differing width) because that is
+  // the only shape that distinguishes l/c/r. The shared gallery uses
+  // uniform-width cells (`a`/`c`, `a`/`b`/`c`/`d`), where all three alignments
+  // coincide — which is why the oracle dimension goldens never caught this.
+  group('column alignment', () {
+    const display = KatexOptions(displayMode: true);
+
+    /// The cells of each `col-align-*` column, as
+    /// (alignClass, columnWidth, [(leftOffset, cellWidth), …]).
+    List<(String, double, List<(double, double)>)> columns(BoxNode root) {
+      final out = <(String, double, List<(double, double)>)>[];
+      for (final span in _flatten(root).whereType<SpanNode>()) {
+        final cls = span.classes.where((c) => c.startsWith('col-align-'));
+        if (cls.isEmpty) continue;
+        final vlist = span.children.whereType<VList>().firstOrNull;
+        if (vlist == null) continue;
+        final cells = <(double, double)>[];
+        for (final p in vlist.positions) {
+          // A non-zero alignment offset is modelled as a leading KernNode.
+          final box = p.box;
+          var lead = 0.0;
+          if (box is HBox && box.children.firstOrNull is KernNode) {
+            lead = (box.children.first as KernNode).width;
+          }
+          cells.add((lead, box.width - lead));
+        }
+        out.add((cls.first, vlist.width, cells));
+      }
+      return out;
+    }
+
+    test('align anchors both rows at the same & column boundary', () {
+      // Ragged left column: `a` (narrow) vs `d+e` (wide). Right-aligning it is
+      // what makes the two `=` signs share an x position.
+      final root = renderToBox(
+        r'\begin{align} a &= b+c \\ d+e &= f \end{align}',
+        options: display,
+      );
+      final cols = columns(root);
+      expect(cols, hasLength(2));
+
+      final (leftClass, leftWidth, leftCells) = cols[0];
+      expect(leftClass, 'col-align-r');
+      // Every cell's RIGHT edge must land on the column's right edge.
+      for (final (lead, width) in leftCells) {
+        expect(
+          lead + width,
+          closeTo(leftWidth, 1e-9),
+          reason: 'right-aligned cell must end at the column edge',
+        );
+      }
+      // The narrow cell must actually be pushed right (the regression).
+      expect(leftCells.map((c) => c.$1).reduce(math.max), greaterThan(0.5));
+
+      final (rightClass, _, rightCells) = cols[1];
+      expect(rightClass, 'col-align-l');
+      // Left-aligned cells all start at the column's left edge.
+      for (final (lead, _) in rightCells) {
+        expect(lead, closeTo(0, 1e-9));
+      }
+    });
+
+    test('centered columns split the slack evenly', () {
+      final root = renderToBox(
+        r'\begin{pmatrix} a & b \\ ddd & e \end{pmatrix}',
+        options: display,
+      );
+      for (final (cls, colWidth, cells) in columns(root)) {
+        expect(cls, 'col-align-c');
+        for (final (lead, width) in cells) {
+          expect(
+            lead,
+            closeTo((colWidth - width) / 2, 1e-9),
+            reason: 'centered cell offset must be half the slack',
+          );
+        }
+      }
+    });
+
+    test(r'\begin{array}{rl} honors each column spec independently', () {
+      final root = renderToBox(
+        r'\begin{array}{rl} a & b \\ ddd & e \end{array}',
+        options: display,
+      );
+      final cols = columns(root);
+      expect(cols, hasLength(2));
+
+      final (rClass, rWidth, rCells) = cols[0];
+      expect(rClass, 'col-align-r');
+      for (final (lead, width) in rCells) {
+        expect(lead + width, closeTo(rWidth, 1e-9));
+      }
+
+      final (lClass, _, lCells) = cols[1];
+      expect(lClass, 'col-align-l');
+      for (final (lead, _) in lCells) {
+        expect(lead, closeTo(0, 1e-9));
+      }
+    });
+
+    test('alignment offsets do not change the array width', () {
+      // The column width is the widest cell either way, so padding the
+      // narrower cells must not grow the array.
+      for (final tex in [
+        r'\begin{align} a &= b+c \\ d+e &= f \end{align}',
+        r'\begin{pmatrix} a & b \\ ddd & e \end{pmatrix}',
+      ]) {
+        final root = renderToBox(tex, options: display);
+        for (final (_, colWidth, cells) in columns(root)) {
+          for (final (lead, width) in cells) {
+            expect(
+              lead + width,
+              lessThanOrEqualTo(colWidth + 1e-9),
+              reason: 'no cell may overflow its column in $tex',
+            );
+          }
+        }
       }
     });
   });

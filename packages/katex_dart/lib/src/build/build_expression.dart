@@ -20,6 +20,7 @@ import 'package:katex_dart/src/box/box_node.dart';
 import 'package:katex_dart/src/build/build_common.dart';
 import 'package:katex_dart/src/build/builders/builders.dart' as builders;
 import 'package:katex_dart/src/build/builders/units.dart' show calculateSize;
+import 'package:katex_dart/src/build/line_breaker.dart';
 import 'package:katex_dart/src/build/options.dart';
 import 'package:katex_dart/src/build/style.dart';
 import 'package:katex_dart/src/parse/parse_error.dart';
@@ -248,9 +249,22 @@ List<BoxNode> buildExpression(
 /// a [VList]. An expression with NO such break is built exactly as a single
 /// `katex-html` span (byte-for-byte unchanged), so single-line layout — and the
 /// oracle dimension gate — is unaffected.
-BoxNode buildHTML(List<ParseNode> tree, Options options) {
-  // Fast path: no top-level line break. Identical to the original buildHTML.
-  if (!_hasTopLevelNewLine(tree)) {
+///
+/// [maxWidth] is an optional **automatic** wrapping budget in em. When finite,
+/// each line is additionally wrapped at TeX's break opportunities (after a
+/// top-level `mbin`/`mrel`/`\allowbreak` — see `line_breaker.dart`) so no line
+/// exceeds it. `double.infinity` (the default) disables wrapping, which is
+/// KaTeX's own behaviour: it emits break *opportunities* and leaves the actual
+/// wrapping to the browser. A budget that everything already fits inside
+/// produces the same single span as no budget at all.
+BoxNode buildHTML(
+  List<ParseNode> tree,
+  Options options, {
+  double maxWidth = double.infinity,
+}) {
+  // Fast path: no top-level line break and no width budget. Identical to the
+  // original buildHTML.
+  if (!_hasTopLevelNewLine(tree) && !maxWidth.isFinite) {
     final expression = buildExpression(
       tree,
       options,
@@ -263,7 +277,7 @@ BoxNode buildHTML(List<ParseNode> tree, Options options) {
       options: options,
     );
   }
-  return _buildHTMLWithLineBreaks(tree, options);
+  return _buildHTMLWithLineBreaks(tree, options, maxWidth);
 }
 
 // Whether [tree] contains a top-level `cr` node that produces a line break.
@@ -276,11 +290,17 @@ bool _hasTopLevelNewLine(List<ParseNode> tree) {
   return false;
 }
 
-// Splits [tree] on top-level `cr` line breaks and stacks each line, left
-// aligned, in a VList. Port of the layout KaTeX gets from CSS
-// `.newline { display: block }`: each line sits on its own baseline, separated
-// by the line's depth + next line's height plus the optional `\\[size]` skip.
-BoxNode _buildHTMLWithLineBreaks(List<ParseNode> tree, Options options) {
+// Splits [tree] on top-level `cr` line breaks, wraps each resulting segment to
+// [maxWidth] em when a budget is set, and stacks every line, left aligned, in a
+// VList. Port of the layout KaTeX gets from CSS `.newline { display: block }`
+// (plus the browser's inline wrapping, which `line_breaker.dart` stands in
+// for): each line sits on its own baseline, separated by the line's depth +
+// next line's height plus the optional `\\[size]` skip.
+BoxNode _buildHTMLWithLineBreaks(
+  List<ParseNode> tree,
+  Options options,
+  double maxWidth,
+) {
   // Split into segments, recording the extra skip carried by each break.
   final segments = <List<ParseNode>>[<ParseNode>[]];
   final extraSkips = <double>[]; // skip BELOW segment i (from the break after).
@@ -294,18 +314,36 @@ BoxNode _buildHTMLWithLineBreaks(List<ParseNode> tree, Options options) {
     }
   }
 
-  // Build each line as a left-aligned span.
+  // Build each segment, then wrap it to the width budget. A segment can yield
+  // several lines; the explicit break's skip belongs below the LAST of them.
   final lines = <BoxNode>[];
-  for (final segment in segments) {
+  final skipsBelow = <double>[];
+  for (var s = 0; s < segments.length; s++) {
     final expression = buildExpression(
-      segment,
+      segments[s],
       options,
       isRealGroup: true,
       isRoot: true,
     );
-    lines.add(
-      makeSpan(expression, classes: const ['katex-html'], options: options),
-    );
+    final wrapped = maxWidth.isFinite
+        ? packChunksIntoLines(chunkAtBreakOpportunities(expression), maxWidth)
+        : <List<BoxNode>>[expression];
+    for (var w = 0; w < wrapped.length; w++) {
+      lines.add(
+        makeSpan(wrapped[w], classes: const ['katex-html'], options: options),
+      );
+      final isSegmentEnd = w == wrapped.length - 1;
+      skipsBelow.add(
+        isSegmentEnd && s < extraSkips.length ? extraSkips[s] : 0.0,
+      );
+    }
+  }
+
+  // A width budget that everything fits inside (and no explicit break) leaves a
+  // single line — emit it bare, so the result is identical to the fast path
+  // rather than a pointless one-child VList.
+  if (lines.length == 1) {
+    return lines.first;
   }
 
   // Stack the lines in a VList. The first line keeps its own baseline; each
@@ -316,8 +354,7 @@ BoxNode _buildHTMLWithLineBreaks(List<ParseNode> tree, Options options) {
   for (var i = 1; i < lines.length; i++) {
     final prev = lines[i - 1];
     final line = lines[i];
-    final extra = (i - 1) < extraSkips.length ? extraSkips[i - 1] : 0.0;
-    shift += prev.depth + line.height + extra;
+    shift += prev.depth + line.height + skipsBelow[i - 1];
     children.add(VListChild.elem(line, shift: shift));
   }
 

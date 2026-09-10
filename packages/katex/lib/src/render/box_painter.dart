@@ -851,6 +851,12 @@ class KatexBoxPainter extends CustomPainter {
   }
 
   static const Map<String, Color> _namedColors = {
+    // `\phantom`/`\vphantom`/`\hphantom` reserve their argument's dimensions
+    // but must not paint it. The box tree carries that as the CSS keyword
+    // `transparent` (Options.getColor), which the SVG backend emits verbatim.
+    // Without an entry here _parseColor returns null and the span falls back to
+    // the inherited color, painting the phantom body fully visible.
+    'transparent': Color(0x00000000),
     'black': Color(0xFF000000),
     'white': Color(0xFFFFFFFF),
     'red': Color(0xFFFF0000),

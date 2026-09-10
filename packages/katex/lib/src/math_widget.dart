@@ -37,6 +37,26 @@ const double kDefaultMathFontSize = 20;
 /// extent of the rendered box (`boxSizePx`), so it lays out correctly inside
 /// rows, columns, wraps, etc.
 ///
+/// ## Line breaking
+/// By default a long expression is laid out on a single line and overflows its
+/// parent, which is KaTeX's own behaviour. Pass [softWrap] to wrap it instead:
+/// the expression is broken onto as many lines as the incoming constraints
+/// need, at TeX's break opportunities only — after a top-level binary operator
+/// (`+`, `-`, `\times`, …), a top-level relation (`=`, `<`, …), or an explicit
+/// `\allowbreak`. Nothing inside `{...}`, a fraction, or a `\left…\right` pair
+/// is ever broken, so a single wide `\frac` still overflows: there is nowhere
+/// legal to cut it.
+///
+/// ```dart
+/// Math(r'a + b + c = d + e + f + g + h', softWrap: true)   // wraps to parent
+/// Math(r'a + b + c = d', maxWidth: 200)                    // wraps at 200px
+/// ```
+///
+/// [maxWidth] sets an explicit budget in logical pixels and takes precedence
+/// over [softWrap]. Under an unbounded width constraint (a horizontal
+/// [ListView], an unconstrained [Row]) [softWrap] has nothing to wrap to and
+/// the expression stays on one line.
+///
 /// ## Error handling
 /// [renderToBox] may throw a [ParseError] on invalid input. Behaviour:
 ///  * If [throwOnError] is `true`, the error propagates out of [build] (the
@@ -55,6 +75,8 @@ class Math extends StatelessWidget {
     this.color,
     this.onError,
     this.throwOnError = false,
+    this.softWrap = false,
+    this.maxWidth,
   });
 
   /// The LaTeX math source to render (e.g. `r'\frac{a}{b}'`).
@@ -83,11 +105,50 @@ class Math extends StatelessWidget {
   /// fallback and never crash the widget tree.
   final bool throwOnError;
 
+  /// Whether to wrap a long expression onto several lines to fit the incoming
+  /// width constraint (`false` by default — KaTeX's own single-line
+  /// behaviour). See "Line breaking" above. Ignored when [maxWidth] is set.
+  final bool softWrap;
+
+  /// An explicit line-breaking budget in **logical pixels**, or `null` to use
+  /// the incoming constraint (when [softWrap]) / not wrap at all.
+  final double? maxWidth;
+
   /// KaTeX's error color (`#cc0000`), used for the default fallback rendering.
   static const Color _errorColor = Color(0xFFCC0000);
 
   @override
   Widget build(BuildContext context) {
+    final fontSizePx = fontSize ?? kDefaultMathFontSize;
+
+    if (maxWidth != null) {
+      return _buildMath(context, _emBudget(maxWidth!, fontSizePx));
+    }
+    if (!softWrap) {
+      return _buildMath(context, double.infinity);
+    }
+    // Wrapping needs the incoming width, which is only known at layout time.
+    return LayoutBuilder(
+      builder: (context, constraints) =>
+          _buildMath(context, _emBudget(constraints.maxWidth, fontSizePx)),
+    );
+  }
+
+  /// Converts a pixel budget to the em budget `katex_dart` breaks lines on.
+  ///
+  /// The painted canvas is [boxSizePxPadded] — the box grown by
+  /// [kInkOverflowPadEm] on each side — so the box itself may only use what is
+  /// left after that pad. A non-finite or degenerate (≤ 0) budget disables
+  /// wrapping rather than putting every chunk on its own line.
+  static double _emBudget(double widthPx, double fontSizePx) {
+    if (!widthPx.isFinite || fontSizePx <= 0) {
+      return double.infinity;
+    }
+    final em = widthPx / fontSizePx - 2 * kInkOverflowPadEm;
+    return em > 0 ? em : double.infinity;
+  }
+
+  Widget _buildMath(BuildContext context, double maxWidthEm) {
     final baseColor = color ?? DefaultTextStyle.of(context).style.color ?? const Color(0xFF000000);
     final fontSizePx = fontSize ?? kDefaultMathFontSize;
 
@@ -99,6 +160,7 @@ class Math extends StatelessWidget {
           displayMode: displayMode,
           color: _toCssColor(color),
           throwOnError: throwOnError,
+          maxWidth: maxWidthEm,
         ),
       );
     } on ParseError catch (error) {

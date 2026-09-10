@@ -36,11 +36,14 @@ export 'package:katex_dart/src/svg/glyph_paths.g.dart' show katexGlyphPaths, kat
 /// → build the box tree (`buildHTML`/`buildExpression`, this ticket). The
 /// returned node is the root of the box tree; its `height`/`depth`/`width` (in
 /// em) describe the rendered extent.
+///
+/// Set [KatexOptions.maxWidth] (in em) to wrap a long expression onto several
+/// lines; the root is then a [VList] of lines instead of a single row.
 BoxNode renderToBox(String tex, {KatexOptions? options}) {
   final opts = options ?? const KatexOptions();
   final settings = opts.toSettings();
   final tree = parseTree(tex, settings);
-  return buildHTML(tree, opts.toOptions());
+  return buildHTML(tree, opts.toOptions(), maxWidth: opts.maxWidth);
 }
 
 /// Renders [tex] to a self-contained SVG string, built on [renderToBox] and the

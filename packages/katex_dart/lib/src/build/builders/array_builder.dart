@@ -194,8 +194,12 @@ BoxNode _buildArray(ArrayNode group, Options options) {
       }
     }
 
-    // Column vlist.
-    final colElems = <VListChild>[];
+    // Column vlist. Cells are built first so the column width (the widest
+    // cell) is known before they are placed, because the horizontal offset
+    // that realizes the column's alignment depends on it.
+    final align = colDescr?.align ?? 'c';
+    final cells = <BoxNode>[];
+    final shifts = <double>[];
     for (var r = 0; r < nr; r++) {
       final row = body[r];
       if (c >= row.cells.length) {
@@ -205,23 +209,46 @@ BoxNode _buildArray(ArrayNode group, Options options) {
       if (elem == null) {
         continue;
       }
-      final shift = row.pos - offset;
       // Force the cell to the row's height/depth (KaTeX overrides
       // elem.height/depth). Model the strut as a zero-width rule alongside the
       // cell in an HBox: HBox takes max height/depth and sums widths (rule is
       // zero-width), so the cell keeps its advance but the row dimensions win.
       final strut = RuleNode(width: 0, height: row.height, depth: row.depth);
-      final cell = HBox([strut, elem]);
-      colElems.add(VListChild.elem(cell, shift: shift));
+      cells.add(HBox([strut, elem]));
+      shifts.add(row.pos - offset);
     }
-    if (colElems.isNotEmpty) {
+    if (cells.isNotEmpty) {
+      var colWidth = 0.0;
+      for (final cell in cells) {
+        colWidth = math.max(colWidth, cell.width);
+      }
+      // KaTeX emits HTML and defers alignment to the CSS class `col-align-*`
+      // (`text-align`). The box tree has no CSS, so the offset that class
+      // implies has to be applied geometrically: pad each cell on the left by
+      // the slack its alignment calls for. Without this every cell sits flush
+      // at x=0 and all columns render left-aligned, which breaks the `&`
+      // anchor in align/aligned and un-centers matrix columns.
+      final colElems = <VListChild>[];
+      for (var i = 0; i < cells.length; i++) {
+        final cell = cells[i];
+        final slack = colWidth - cell.width;
+        final leftPad = switch (align) {
+          'r' => slack,
+          'c' => slack / 2,
+          _ => 0.0,
+        };
+        colElems.add(
+          VListChild.elem(
+            leftPad == 0 ? cell : HBox([KernNode(leftPad), cell]),
+            shift: shifts[i],
+          ),
+        );
+      }
       final colVList = makeVList(
         positionType: VListPositionType.individualShift,
         children: colElems,
       );
-      cols.add(
-        makeSpan([colVList], classes: ['col-align-${colDescr?.align ?? 'c'}']),
-      );
+      cols.add(makeSpan([colVList], classes: ['col-align-$align']));
     }
 
     // Post-gap.

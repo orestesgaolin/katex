@@ -272,6 +272,72 @@ void main() {
     );
   });
 
+  // `\phantom` and friends reserve their argument's dimensions but must paint
+  // nothing. The box tree expresses that as the CSS keyword `transparent` on a
+  // SpanNode (Options.getColor), which the SVG backend emits verbatim as
+  // `fill="transparent"`. The painter has to resolve that keyword itself: when
+  // _parseColor did not know it, the span fell back to the inherited color and
+  // the phantom body painted fully visible — while the SVG stayed correct.
+  group('phantom (transparent color)', () {
+    testWidgets(r'\phantom paints no ink but reserves its width', (
+      tester,
+    ) async {
+      final phantom = renderToBox(r'\phantom{x^2+2x+1}');
+      final real = renderToBox(r'x^2+2x+1');
+
+      // Same reserved geometry as the visible content.
+      expect(phantom.width, closeTo(real.width, 1e-9));
+      expect(phantom.height, closeTo(real.height, 1e-9));
+      expect(phantom.depth, closeTo(real.depth, 1e-9));
+
+      // The visible version inks; the phantom must not.
+      expect(
+        _inkCount(await _rasterize(tester, real, 40)),
+        greaterThan(0),
+        reason: 'the visible control must actually draw something',
+      );
+      expect(
+        _inkCount(await _rasterize(tester, phantom, 40)),
+        0,
+        reason: r'\phantom must paint no ink',
+      );
+    });
+
+    testWidgets(r'\vphantom and \hphantom paint no ink either', (tester) async {
+      for (final tex in <String>[r'\vphantom{x^2}', r'\hphantom{abc}']) {
+        final root = renderToBox(tex);
+        expect(
+          _inkCount(await _rasterize(tester, root, 40)),
+          0,
+          reason: '$tex must paint no ink',
+        );
+      }
+    });
+
+    testWidgets('only the phantom part is hidden', (tester) async {
+      // The visible prefix still inks, so the fix cannot be "hide everything".
+      final root = renderToBox(
+        r'(x+1)^2 = \phantom{x^2+2x+1}',
+        options: const KatexOptions(displayMode: true),
+      );
+      final img = await _rasterize(tester, root, 40);
+      expect(_inkCount(img), greaterThan(0));
+      // The phantom occupies the trailing part of the box; that region is blank
+      // while the leading part carries the visible `(x+1)^2 =`.
+      final trailing = Rect.fromLTWH(
+        img.width * 0.62,
+        0,
+        img.width * 0.38,
+        img.height.toDouble(),
+      );
+      expect(
+        _inkCount(img, region: trailing),
+        0,
+        reason: 'the phantom tail must be blank',
+      );
+    });
+  });
+
   test('shouldRepaint reacts to root / fontSize / color changes', () {
     final root = renderToBox('x^2');
     final other = renderToBox('y^2');
