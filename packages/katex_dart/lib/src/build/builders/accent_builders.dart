@@ -30,7 +30,7 @@ import 'package:katex_dart/src/ast/parse_node.dart' hide KernNode, RuleNode;
 import 'package:katex_dart/src/box/box_node.dart';
 import 'package:katex_dart/src/build/build_common.dart';
 import 'package:katex_dart/src/build/build_expression.dart';
-import 'package:katex_dart/src/build/builders/supsub_builder.dart' show isCharacterBox;
+import 'package:katex_dart/src/build/builders/supsub_builder.dart' show buildSupSub, isCharacterBox;
 import 'package:katex_dart/src/build/options.dart';
 import 'package:katex_dart/src/svg/svg_geometry.g.dart' as geom;
 
@@ -335,8 +335,19 @@ BoxNode _buildAccent(AccentNode group, Options options) {
     skew = _baseSymbol(body)?.scaledSkew ?? 0.0;
   }
 
+  // `\c` (cedilla) is the one accent that hangs BELOW its base. KaTeX marks it
+  // with `accentBelow` and gives it a clearance spanning the base's whole
+  // vertical extent (plus the accent's own depth, added once the glyph is
+  // built), so the `-clearance` kern below drops the accent past the baseline
+  // instead of lifting it over the base. Without this branch the cedilla was
+  // placed like an over-accent and sat on top of the letter — "ç" read as a
+  // c with a mark above it, and "Ç" as a struck-through C.
+  final accentBelow = group.label == r'\c';
+
   // Clearance between body and accent (rule 12): min of body height & xHeight.
-  final clearance = math.min(body.height, options.fontMetrics().xHeight);
+  var clearance = accentBelow
+      ? body.height + body.depth
+      : math.min(body.height, options.fontMetrics().xHeight);
 
   if (!isStretchy) {
     final BoxNode accent;
@@ -365,6 +376,11 @@ BoxNode _buildAccent(AccentNode group, Options options) {
       } else {
         accent = glyph ?? makeSpan(const []);
         accentWidth = accent.width;
+      }
+      // The below-accent glyph carries its own depth (the cedilla's hook hangs
+      // under the baseline); clear that too so it does not overlap the base.
+      if (accentBelow) {
+        clearance += accent.depth;
       }
     }
 
@@ -420,24 +436,23 @@ BoxNode buildAccentSupSub(SupSubNode grp, Options options) {
   final accentGroup = grp.base! as AccentNode;
   // Build the accent over the character base.
   final accented = _buildAccent(accentGroup, options);
-  // Re-run supsub with the accent's inner base as the supsub base, then
-  // overlay. For the MVP we attach scripts to the whole accented box, which
-  // keeps dimensions correct (the script-position-independent-of-accent
-  // nicety is a refinement for T-019).
+  // KaTeX attaches the scripts to the accent's INNER base, so their position
+  // does not move with the accent's height, and only then swaps the
+  // accent-wrapped base in for rendering. Running the generic supsub path on
+  // the bare base keeps its italic correction and skew (which drive the script
+  // offsets); `baseBox` then substitutes what is actually drawn.
+  //
+  // Passing the accented box as the supsub's base instead would be wrong twice
+  // over: the scripts would shift with the accent, and the built base would be
+  // emitted ALONGSIDE the accented one, drawing the letter twice
+  // (`\vec{u}_1` rendered as "u⃗u₁").
   final innerSupSub = SupSubNode(
     mode: grp.mode,
     base: accentGroup.base,
     sup: grp.sup,
     sub: grp.sub,
   );
-  // Build using the generic supsub path on the bare base, then wrap.
-  final built = buildGroup(innerSupSub, options);
-  // Use the accented box's height to keep vertical extent.
-  return withAtomClass(
-    makeFragment([accented, built]),
-    'mord',
-    options: options,
-  );
+  return buildSupSub(innerSupSub, options, baseBox: accented);
 }
 
 BoxNode _buildAccentUnder(AccentUnderNode group, Options options) {

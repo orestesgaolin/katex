@@ -31,7 +31,14 @@ bool isCharacterBox(ParseNode? node) {
 }
 
 /// Builds a [SupSubNode]. Public so op/accent delegation can be checked.
-BoxNode buildSupSub(SupSubNode group, Options options) {
+///
+/// [baseBox], when given, is drawn in place of the built base while every
+/// measurement still comes from the base itself. The accent builder uses this:
+/// KaTeX attaches the scripts to the accent's *inner* base, so their position
+/// does not shift with the accent's height, then swaps the accent-wrapped base
+/// in for rendering (`supSubGroup.children[0] = accentWrap`). Keeping the
+/// metrics on the bare symbol is what preserves its italic correction and skew.
+BoxNode buildSupSub(SupSubNode group, Options options, {BoxNode? baseBox}) {
   // Delegate to the inner group when it should handle its own scripts.
   final base = group.base;
   if (base is OpNode) {
@@ -197,9 +204,13 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
   final baseItalic = baseSymbol?.scaledItalic ?? 0.0;
 
   final mclass = atomClassOf(builtBase) ?? 'mord';
+  // Only the DRAWN base is substituted; every measurement above used the real
+  // base. The enclosing fragment takes the max height of its children, which
+  // reproduces KaTeX's manual `height = max(accentWrap.height, supSub.height)`
+  // after the swap.
   return withAtomClass(
     makeFragment([
-      builtBase,
+      baseBox ?? builtBase,
       if (baseItalic != 0) KernNode(baseItalic),
       makeSpan([supsub], classes: const ['msupsub']),
     ]),

@@ -185,6 +185,92 @@ void main() {
     });
   });
 
+  // Precomposed accented input (KaTeX `unicodeSymbols`).
+  //
+  // A literal "é" has no font metrics, so if it reaches the builder unchanged
+  // it is dropped and the character silently disappears ("café" → "caf"). The
+  // parser therefore rewrites it to its base letter + combining accent, which
+  // the existing combining-mark path turns into an accent command.
+  group('precomposed accents', () {
+    /// The accent labels wrapping [tex]'s single parsed symbol, outermost last.
+    List<String> accentLabels(String tex) {
+      final body = (parse(tex).single as TextNode).body;
+      final labels = <String>[];
+      var node = body.single;
+      while (node is AccentNode) {
+        labels.add(node.label);
+        node = node.base;
+      }
+      return labels;
+    }
+
+    String baseText(String tex) {
+      var node = (parse(tex).single as TextNode).body.single;
+      while (node is AccentNode) {
+        node = node.base;
+      }
+      return (node as SymbolParseNode).text;
+    }
+
+    test('decomposes into base letter + text-mode accent command', () {
+      expect(baseText(r'\text{é}'), 'e');
+      expect(accentLabels(r'\text{é}'), [r"\'"]);
+
+      expect(baseText(r'\text{â}'), 'a');
+      expect(accentLabels(r'\text{â}'), [r'\^']);
+
+      expect(baseText(r'\text{ä}'), 'a');
+      expect(accentLabels(r'\text{ä}'), [r'\"']);
+
+      expect(baseText(r'\text{ù}'), 'u');
+      expect(accentLabels(r'\text{ù}'), [r'\`']);
+    });
+
+    test('cedilla and double acute resolve (were "Unknown accent")', () {
+      // These two live in `unicodeAccents` but were missing from the parser's
+      // own reduced copy of that table, so they threw.
+      expect(baseText(r'\text{ç}'), 'c');
+      expect(accentLabels(r'\text{ç}'), [r'\c']);
+
+      expect(baseText(r'\text{ő}'), 'o');
+      expect(accentLabels(r'\text{ő}'), [r'\H']);
+    });
+
+    test('text mode uses the text accent, not the math one', () {
+      // The parser previously always chose the math command (`\acute`), which
+      // in text mode rendered a literal backslash instead of an accent.
+      expect(accentLabels(r'\text{é}'), [r"\'"]);
+      // Math mode still prefers the math command.
+      final mathBody = parse('é').single;
+      expect((mathBody as AccentNode).label, r'\acute');
+    });
+
+    test('an accented i/j loses its dot, as with explicit accents', () {
+      expect(baseText(r'\text{ï}'), 'ı');
+    });
+
+    test('precomposed and decomposed input agree', () {
+      for (final pair in <(String, String)>[
+        (r'\text{é}', '\\text{e\u0301}'),
+        (r'\text{â}', '\\text{a\u0302}'),
+        (r'\text{ç}', '\\text{c\u0327}'),
+      ]) {
+        expect(
+          accentLabels(pair.$1),
+          accentLabels(pair.$2),
+          reason: '${pair.$1} vs ${pair.$2}',
+        );
+        expect(baseText(pair.$1), baseText(pair.$2));
+      }
+    });
+
+    test('unaccented text is untouched', () {
+      final body = (parse(r'\text{abc}').single as TextNode).body;
+      expect(body, hasLength(3));
+      expect(body.every((n) => n is! AccentNode), isTrue);
+    });
+  });
+
   group('error handling', () {
     test('undefined control sequence throws by default', () {
       expect(() => parse(r'\nonexistentcommand'), throwsA(isA<Object>()));

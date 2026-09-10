@@ -157,7 +157,36 @@ class _SvgSerializer {
         _writeEnclose(node);
       case ImageNode():
         _writeImage(node);
+      case TextRunNode():
+        _writeTextRun(node);
     }
+  }
+
+  // --- Complex-script text run ----------------------------------------------
+
+  /// Emits a whole shaped run as a single `<text>` element.
+  ///
+  /// Unlike [_writeGlyph] this cannot use a glyph outline: the run's script is
+  /// not in the KaTeX fonts, and its letterforms depend on context, so the
+  /// shaping has to be left to the renderer. `direction="rtl"` plus
+  /// `unicode-bidi="bidi-override"` keeps a right-to-left run in logical order.
+  ///
+  /// No `font-family` is emitted on purpose — the embedded KaTeX faces have no
+  /// coverage here, so the renderer must fall back to a system font that does.
+  /// That means the run will not match the surrounding KaTeX typeface, which is
+  /// the accepted trade-off for showing the text at all.
+  void _writeTextRun(TextRunNode node) {
+    final size = node.size * fontSize;
+    _buf
+      ..write('<text x="0" y="0" ')
+      ..write('font-size="${_num(size)}"');
+    if (node.rtl) {
+      _buf.write(' direction="rtl" unicode-bidi="bidi-override"');
+    }
+    _buf
+      ..write('>')
+      ..write(_escapeText(node.text))
+      ..write('</text>');
   }
 
   // --- Image (\includegraphics) ---------------------------------------------

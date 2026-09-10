@@ -272,6 +272,60 @@ void main() {
     );
   });
 
+  // Complex-script runs (Arabic, Hebrew, …) are painted as one shaped string
+  // rather than per glyph, because those scripts need contextual joining and
+  // bidi reordering that the per-box model cannot express.
+  //
+  // Note these tests do NOT assert glyph shapes: flutter_test has no system
+  // font fallback, so an unstyled run rasterises as tofu here. Shaping is
+  // verified by rendering with a real Arabic font registered (see
+  // `katexTextRunFontFamilies`); what is asserted here is the wiring —
+  // measurement, layout and that the run reaches the canvas.
+  group('complex-script text runs', () {
+    test('the Flutter measurer reports a real advance', () {
+      final metrics = flutterTextRunMeasurer('مرة');
+      expect(metrics.width, greaterThan(0));
+      expect(metrics.height, greaterThan(0));
+      // The estimate the core falls back to is deliberately crude; the point of
+      // the Flutter measurer is that it reflects actual shaped text.
+      expect(metrics.width.isFinite, isTrue);
+      expect(metrics.depth, greaterThanOrEqualTo(0));
+    });
+
+    test('an rtl run lays out right-to-left', () {
+      final tp = buildTextRunPainter('مرة', 40, rtl: true);
+      expect(tp.textDirection, TextDirection.rtl);
+      expect(tp.width, greaterThan(0));
+    });
+
+    testWidgets('the run reserves space and paints', (tester) async {
+      final root = renderToBox(
+        r'\text{مرة}',
+        options: const KatexOptions(measureTextRun: flutterTextRunMeasurer),
+      );
+      // Measured, not dropped: the box carries a real advance.
+      expect(root.width, greaterThan(0));
+      // And painting it does not throw.
+      expect(() => _paintToPicture(root, 40), returnsNormally);
+      final img = await _rasterize(tester, root, 40);
+      expect(
+        _inkCount(img),
+        greaterThan(0),
+        reason: 'the run must put ink on the canvas (tofu counts here)',
+      );
+    });
+
+    testWidgets('a run counts as one revealable leaf', (tester) async {
+      // The reveal animation steps per leaf; a shaped run is indivisible, so it
+      // must count once rather than once per character.
+      final root = renderToBox(
+        r'\text{مرة}',
+        options: const KatexOptions(measureTextRun: flutterTextRunMeasurer),
+      );
+      expect(countRevealableLeaves(root), 1);
+    });
+  });
+
   test('shouldRepaint reacts to root / fontSize / color changes', () {
     final root = renderToBox('x^2');
     final other = renderToBox('y^2');

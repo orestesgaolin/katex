@@ -9,6 +9,7 @@
 library;
 
 import 'package:katex_dart/src/build/options.dart';
+import 'package:katex_dart/src/build/text_run.dart';
 import 'package:katex_dart/src/build/style.dart';
 import 'package:katex_dart/src/parse/parse_error.dart' show ParseError;
 import 'package:katex_dart/src/parse/settings.dart';
@@ -28,6 +29,7 @@ class KatexOptions {
     this.strict = false,
     this.minRuleThickness = 0.0,
     this.maxSize = double.infinity,
+    this.measureTextRun = defaultTextRunMeasurer,
   });
 
   /// Whether to typeset as display math (`true`) or inline math (`false`,
@@ -60,6 +62,12 @@ class KatexOptions {
   /// Cap on user-specified sizes in em, mirroring KaTeX's `maxSize`.
   final double maxSize;
 
+  /// Measures a complex-script text run (Arabic, Hebrew, …) so the builder can
+  /// reserve the right space for it. Defaults to [defaultTextRunMeasurer], a
+  /// rough estimate; the Flutter widget supplies a `TextPainter`-backed
+  /// measurer so the reserved space matches what it paints.
+  final TextRunMeasurer measureTextRun;
+
   /// Maps these options to the internal parser [Settings].
   Settings toSettings() => Settings(
     displayMode: displayMode,
@@ -79,6 +87,7 @@ class KatexOptions {
       style: displayMode ? Style.DISPLAY : Style.TEXT,
       maxSize: settings.maxSize,
       minRuleThickness: settings.minRuleThickness,
+      measureTextRun: measureTextRun,
     );
     if (color != null) {
       options = options.withColor(color!);

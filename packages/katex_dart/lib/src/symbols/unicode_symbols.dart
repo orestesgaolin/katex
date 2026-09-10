@@ -5,17 +5,16 @@
 /// commands in text and math mode).
 ///
 /// KaTeX's `unicodeSymbols` map (precomposed accented letters →
-/// decomposed `letter + combining accent` sequences) is *not* ported here.
-/// KaTeX builds it at module-load time by Unicode NFC-normalizing every
-/// `letter × accent` (and `letter × accent × accent`) combination and keeping
-/// those that normalize to a single code point. Dart's core libraries do not
-/// provide NFC normalization, so reproducing it faithfully needs either a
-/// vendored normalization table or a generator step. The MVP gallery (Greek
-/// letters via `\alpha` etc. and explicit accent commands like `\hat`) does
-/// not require precomposed-letter input, so this is deferred.
+/// decomposed `letter + combining accent` sequences) lives in the generated
+/// `unicode_symbols.g.dart` beside this file. Dart's core libraries provide no
+/// NFC normalization, so `tool/gen_unicode_symbols.dart` runs KaTeX's own
+/// construction — NFC-normalizing every `letter × accent` (and
+/// `letter × accent × accent`) combination, keeping those that collapse to a
+/// single code point — in Node, and emits the result as a const table.
 ///
-/// Follow-up: port `unicodeSymbols` via a generated NFC table when input of
-/// precomposed accented characters (e.g. a literal "é" in source) is needed.
+/// The accent set used to build that table is exactly the key set of
+/// [unicodeAccents] below; keep the two in sync, because an accent missing
+/// from this map silently drops every precomposed character built on it.
 library;
 
 import 'package:meta/meta.dart';

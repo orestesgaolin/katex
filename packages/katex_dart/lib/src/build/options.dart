@@ -11,6 +11,7 @@ library;
 
 import 'package:katex_dart/src/build/style.dart';
 import 'package:katex_dart/src/font/font_metrics.dart';
+import 'package:katex_dart/src/build/text_run.dart';
 import 'package:meta/meta.dart';
 
 // Each element contains [textsize, scriptsize, scriptscriptsize]. The size
@@ -71,6 +72,7 @@ class Options {
     this.fontShape = '',
     this.maxSize = double.infinity,
     this.minRuleThickness = 0,
+    this.measureTextRun = defaultTextRunMeasurer,
   }) : size = size ?? baseSize,
        textSize = textSize ?? size ?? baseSize,
        sizeMultiplier = _sizeMultipliers[(size ?? baseSize) - 1];
@@ -81,10 +83,12 @@ class Options {
     Style style = Style.DISPLAY,
     double maxSize = double.infinity,
     double minRuleThickness = 0,
+    TextRunMeasurer measureTextRun = defaultTextRunMeasurer,
   }) => Options(
     style: style,
     maxSize: maxSize,
     minRuleThickness: minRuleThickness,
+    measureTextRun: measureTextRun,
   );
 
   /// The base size index (KaTeX's `BASESIZE`), `\normalsize`.
@@ -126,6 +130,11 @@ class Options {
   /// The minimum rule (bar) thickness.
   final double minRuleThickness;
 
+  /// Measures a complex-script text run (see `TextRunNode`). Defaults to
+  /// [defaultTextRunMeasurer]; a backend able to shape text should supply its
+  /// own so the reserved space matches what it draws.
+  final TextRunMeasurer measureTextRun;
+
   /// Clamps a rule [thickness] up to [minRuleThickness] (KaTeX floors every
   /// fraction bar / frame / array rule at the configured minimum).
   double floorRuleThickness(double thickness) => thickness > minRuleThickness ? thickness : minRuleThickness;
@@ -148,6 +157,7 @@ class Options {
     String? fontShape,
     double? maxSize,
     double? minRuleThickness,
+    TextRunMeasurer? measureTextRun,
   }) {
     return Options(
       style: style ?? this.style,
@@ -161,6 +171,7 @@ class Options {
       fontShape: fontShape ?? this.fontShape,
       maxSize: maxSize ?? this.maxSize,
       minRuleThickness: minRuleThickness ?? this.minRuleThickness,
+      measureTextRun: measureTextRun ?? this.measureTextRun,
     );
   }
 

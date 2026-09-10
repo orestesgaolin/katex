@@ -21,6 +21,8 @@ import 'package:katex_dart/src/parse/settings.dart';
 import 'package:katex_dart/src/parse/source_location.dart';
 import 'package:katex_dart/src/parse/token.dart';
 import 'package:katex_dart/src/symbols/symbols.dart';
+import 'package:katex_dart/src/symbols/unicode_symbols.dart';
+import 'package:katex_dart/src/symbols/unicode_symbols.g.dart';
 
 /// Tokens that always terminate an expression. Mirrors KaTeX's
 /// `Parser.endOfExpression`.
@@ -728,6 +730,26 @@ class Parser {
       return VerbNode(mode: Mode.text, body: arg, star: star);
     }
 
+    // Rewrite a precomposed accented character (e.g. "é") into its base letter
+    // plus combining accent ("e" + U+0301) so the combining-mark handling below
+    // turns it into an accent command. Without this the precomposed character
+    // reaches the builder, which has no metrics for it and drops it outright —
+    // "café" rendered as "caf". Mirrors KaTeX's `unicodeSymbols` rewrite, which
+    // likewise only applies when the character is not itself a known symbol.
+    if (text.isNotEmpty) {
+      final decomposed = unicodeSymbols[text[0]];
+      if (decomposed != null && Symbols.lookup(mode, text[0]) == null) {
+        if (mode == Mode.math) {
+          settings.reportNonstrict(
+            'unicodeTextInMathMode',
+            'Accented Unicode text character "${text[0]}" used in math mode',
+            nucleus,
+          );
+        }
+        text = decomposed + text.substring(1);
+      }
+    }
+
     // Strip off any combining characters.
     final match = combiningDiacriticalMarksEndRegex.firstMatch(text);
     if (match != null) {
@@ -762,7 +784,7 @@ class Parser {
       final marks = match.group(0)!;
       for (var i = 0; i < marks.length; i++) {
         final accent = marks[i];
-        final command = _unicodeAccentCommands[accent];
+        final command = _unicodeAccentCommand(accent, mode);
         if (command == null) {
           throw ParseError("Unknown accent ' $accent'", nucleus);
         }
@@ -857,17 +879,17 @@ final RegExp _sizeMatchRegex = RegExp(
 );
 final RegExp _verbRegex = RegExp(r'^\\verb[^a-zA-Z]');
 
-// Minimal map of combining diacritical marks to accent commands, mirroring
-// the MVP subset of KaTeX's `unicodeAccents`.
-const Map<String, String> _unicodeAccentCommands = <String, String>{
-  '́': r'\acute',
-  '̀': r'\grave',
-  '̈': r'\ddot',
-  '̃': r'\tilde',
-  '̄': r'\bar',
-  '̆': r'\breve',
-  '̌': r'\check',
-  '̂': r'\hat',
-  '̇': r'\dot',
-  '̊': r'\mathring',
-};
+/// The accent command a combining mark maps to in [mode].
+///
+/// Mirrors KaTeX's `unicodeAccents[accent][this.mode] || ….text`: math mode
+/// prefers the math command (`\acute`) and falls back to the text command,
+/// while text mode always uses the text command (`\'`). Using the math command
+/// in text mode renders the wrong glyph — `\acute` there produced a literal
+/// backslash rather than an acute accent.
+String? _unicodeAccentCommand(String accent, Mode mode) {
+  final entry = unicodeAccents[accent];
+  if (entry == null) {
+    return null;
+  }
+  return mode == Mode.math ? (entry.math ?? entry.text) : entry.text;
+}

@@ -55,12 +55,18 @@ List<BoxNode> _flatten(BoxNode node) {
     case RuleNode():
     case SvgPathNode():
     case ImageNode():
+    case TextRunNode():
       break;
   }
   return out;
 }
 
 bool _isFinitePositive(double v) => v.isFinite && v > 0;
+
+/// A stand-in for a backend measurer, so a test can assert the reported
+/// dimensions reach the box tree rather than depending on the estimate.
+TextRunMetrics _fixedMeasurer(String text) =>
+    const TextRunMetrics(width: 7, height: 3, depth: 2);
 
 void main() {
   group('renderToBox builds every gallery expression', () {
@@ -240,6 +246,92 @@ void main() {
           reason: 'no array rules expected in $tex',
         );
       }
+    });
+  });
+
+  // Complex scripts (Arabic, Hebrew, …) inside `\text{}`.
+  //
+  // These have no KaTeX font metrics, so before TextRunNode existed every one
+  // of their characters built to nothing and the word vanished entirely. They
+  // also cannot be fixed by supplying fallback metrics: Arabic is cursive and
+  // right-to-left, so one box per character at a precomputed x yields isolated
+  // letterforms in reversed order. The whole word has to reach the backend as
+  // a single string for the platform to shape and reorder it.
+  group('complex-script text runs', () {
+    List<TextRunNode> runs(BoxNode root) =>
+        _flatten(root).whereType<TextRunNode>().toList();
+
+    test('an Arabic word becomes ONE run holding the whole word', () {
+      final found = runs(renderToBox(r'\text{مرة}'));
+      expect(found, hasLength(1), reason: 'must not split into per-character runs');
+      expect(found.single.text, 'مرة');
+      expect(found.single.rtl, isTrue);
+      // The old failure mode was silent disappearance; a real advance proves
+      // the run is actually reserved space in the layout.
+      expect(found.single.width, greaterThan(0));
+    });
+
+    test('Hebrew is handled the same way', () {
+      final found = runs(renderToBox(r'\text{שלום}'));
+      expect(found, hasLength(1));
+      expect(found.single.text, 'שלום');
+      expect(found.single.rtl, isTrue);
+    });
+
+    test('the run does not swallow neighbouring Latin', () {
+      // `\text{ مرة }n` — the reported case. The Arabic must form its own run
+      // and leave the surrounding spaces and `n` as ordinary glyphs.
+      final root = renderToBox(r'\text{ مرة }');
+      final found = runs(root);
+      expect(found, hasLength(1));
+      expect(found.single.text, 'مرة');
+      expect(
+        _flatten(root).whereType<GlyphNode>(),
+        isNotEmpty,
+        reason: 'the surrounding spaces still build as glyphs',
+      );
+    });
+
+    test('two words separated by Latin produce two runs', () {
+      final found = runs(renderToBox(r'\text{مرة a كتاب}'));
+      expect(found, hasLength(2));
+      expect(found.map((r) => r.text), ['مرة', 'كتاب']);
+    });
+
+    test('scripts KaTeX already handles are untouched', () {
+      // Latin, accented Latin, Greek, Cyrillic and CJK all keep the per-glyph
+      // path, so this change cannot regress anything that renders today.
+      for (final tex in <String>[
+        r'\text{abc}',
+        r'\text{café}',
+        r'\text{дом}',
+        r'\text{漢字}',
+        r'\alpha+\beta',
+      ]) {
+        expect(runs(renderToBox(tex)), isEmpty, reason: tex);
+      }
+    });
+
+    test('the measurer supplies the run dimensions', () {
+      const metrics = TextRunMetrics(width: 7, height: 3, depth: 2);
+      final root = renderToBox(
+        r'\text{مرة}',
+        options: const KatexOptions(measureTextRun: _fixedMeasurer),
+      );
+      final run = runs(root).single;
+      expect(run.width, closeTo(metrics.width, 1e-9));
+      expect(run.height, closeTo(metrics.height, 1e-9));
+      expect(run.depth, closeTo(metrics.depth, 1e-9));
+      // The run's box must actually drive the enclosing layout.
+      expect(root.width, greaterThanOrEqualTo(metrics.width));
+    });
+
+    test('SVG emits the run as one rtl <text> element', () {
+      final svg = renderToSvg(r'\text{مرة}');
+      expect(svg, contains('مرة'));
+      expect(svg, contains('direction="rtl"'));
+      // One element, not one per character.
+      expect(RegExp('<text').allMatches(svg).length, 1);
     });
   });
 
@@ -542,6 +634,147 @@ void main() {
         );
       });
     }
+
+    // `\c` (cedilla) is the one accent KaTeX places BELOW the base
+    // (`accentBelow` in accent.ts): its clearance spans the base's whole
+    // vertical extent plus the accent glyph's own depth, so the `-clearance`
+    // kern drops the mark under the baseline instead of lifting it over the
+    // base. That branch was missing here, so ç rendered as a c with a mark on
+    // top and Ç looked struck through.
+    //
+    // Expected dimensions below are KaTeX 0.17.0's own, read from
+    // `__renderToDomTree(...)` on the `.base` span.
+    // An accented base carrying a script (`\vec{u}_1`) used to draw its letter
+    // TWICE — "u⃗u₁". `buildAccentSupSub` built the accent over the base AND a
+    // complete supsub on the bare base, then emitted both side by side.
+    //
+    // KaTeX instead attaches the scripts to the accent's inner base (so their
+    // position does not move with the accent's height) and then SWAPS the
+    // accent-wrapped base in for rendering — `supSubGroup.children[0] =
+    // accentWrap`. Expected dimensions are KaTeX 0.17.0's own.
+    group('accent with sub/superscript', () {
+      int glyphCount(BoxNode root, int codepoint) => _flatten(root)
+          .whereType<GlyphNode>()
+          .where((g) => g.codepoint == codepoint)
+          .length;
+
+      const u = 0x75;
+
+      test('the base letter is drawn exactly once', () {
+        for (final tex in <String>[
+          r'\vec{u}_1',
+          r'\vec{u}^2',
+          r'\hat{u}_1',
+          r'\bar{u}_1',
+          r'\tilde{u}_1',
+          r'\widehat{u}_1',
+        ]) {
+          expect(
+            glyphCount(renderToBox(tex), u),
+            1,
+            reason: '$tex must contain a single "u"',
+          );
+        }
+      });
+
+      test('each term keeps its own single base', () {
+        // The reported expression: two accented vectors, so exactly two "u"s.
+        expect(glyphCount(renderToBox(r'\vec{u}_1 - \vec{u}_2'), u), 2);
+      });
+
+      test('root dimensions match KaTeX', () {
+        const display = KatexOptions(displayMode: true);
+        for (final (tex, height, depth) in <(String, double, double)>[
+          (r'\vec{u}_1', 0.71400, 0.15000),
+          (r'\vec{u}^2', 0.86411, 0.00000),
+          (r'\hat{u}_1', 0.69444, 0.15000),
+          (r'\bar{u}_1', 0.56778, 0.15000),
+          (r'\tilde{u}_1', 0.66786, 0.15000),
+          (r'\vec{AB}_1', 0.96633, 0.15000),
+        ]) {
+          final root = renderToBox(tex, options: display);
+          expect(root.height, closeTo(height, 1e-5), reason: 'height of $tex');
+          expect(root.depth, closeTo(depth, 1e-5), reason: 'depth of $tex');
+        }
+      });
+
+      test('the accent does not widen the term', () {
+        // The doubled base showed up as roughly double the advance; an accented
+        // base must be no wider than the same base scripted without an accent.
+        final accented = renderToBox(r'\vec{u}_1');
+        final plain = renderToBox(r'u_1');
+        expect(accented.width, closeTo(plain.width, 1e-6));
+      });
+
+      test('a bare accent is unaffected', () {
+        expect(glyphCount(renderToBox(r'\vec{u}'), u), 1);
+        expect(glyphCount(renderToBox(r'\hat{x}'), 0x78), 1);
+      });
+    });
+
+    group(r'\c places the cedilla below the base', () {
+      test('root dimensions match KaTeX', () {
+        for (final (tex, height, depth) in <(String, double, double)>[
+          (r'\text{\c c}', 0.43056, 0.17014),
+          (r'\text{\c C}', 0.68333, 0.17014),
+          (r'\text{garçon}', 0.43056, 0.19444),
+        ]) {
+          final root = renderToBox(tex);
+          expect(root.height, closeTo(height, 1e-5), reason: 'height of $tex');
+          expect(root.depth, closeTo(depth, 1e-5), reason: 'depth of $tex');
+        }
+      });
+
+      test('the cedilla hangs below the baseline', () {
+        // A non-zero depth is the whole point: an over-accent leaves the base's
+        // depth untouched (0 for "c"), so any depth here comes from the mark
+        // sitting under the baseline.
+        expect(renderToBox(r'\text{\c c}').depth, greaterThan(0.1));
+        // Control: an over-accent adds height, not depth.
+        final acute = renderToBox(r"\text{\'e}");
+        expect(acute.depth, closeTo(0, 1e-9));
+        expect(acute.height, greaterThan(renderToBox(r'\text{e}').height));
+      });
+
+      test('the accent glyph ends up below the base glyph', () {
+        // Both vlist children sit on the same baseline (KaTeX puts both at
+        // `top: -3em`); what separates a below-accent from an over-accent is
+        // the mark glyph's own metrics. The clearance kern is what lands the
+        // mark on that baseline — get it wrong and the cedilla rides up over
+        // the letter. Assert the resulting geometry rather than the shift:
+        // the mark's lowest extent must fall below the base's.
+        double bottom(VListPosition p) => p.shift + p.box.depth;
+        double top(VListPosition p) => p.shift - p.box.height;
+
+        final ced = _flatten(renderToBox(r'\text{\c c}'))
+            .whereType<VList>()
+            .firstWhere((v) => v.positions.length >= 2);
+        expect(
+          bottom(ced.positions.last),
+          greaterThan(bottom(ced.positions.first)),
+          reason: 'the cedilla must extend below the base',
+        );
+
+        // Control: the circumflex extends above the base instead.
+        final hat = _flatten(renderToBox(r'\text{\^a}'))
+            .whereType<VList>()
+            .firstWhere((v) => v.positions.length >= 2);
+        expect(
+          top(hat.positions.last),
+          lessThan(top(hat.positions.first)),
+          reason: 'an over-accent must extend above the base',
+        );
+        expect(bottom(hat.positions.last), closeTo(0, 1e-9));
+      });
+
+      test('precomposed ç matches the explicit command', () {
+        final precomposed = renderToBox(r'\text{ç}');
+        final explicit = renderToBox(r'\text{\c c}');
+        expect(precomposed.height, closeTo(explicit.height, 1e-9));
+        expect(precomposed.depth, closeTo(explicit.depth, 1e-9));
+        expect(precomposed.width, closeTo(explicit.width, 1e-9));
+      });
+    });
   });
 
   // ---------------------------------------------------------------------------

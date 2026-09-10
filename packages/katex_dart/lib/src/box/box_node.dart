@@ -626,6 +626,61 @@ class ImageNode extends BoxNode {
   String toString() => 'ImageNode($src, $_dims)';
 }
 
+/// A whole string of text drawn as ONE shaped run, rather than one
+/// [GlyphNode] per character.
+///
+/// This exists for complex scripts — Arabic, Hebrew, and anything else the
+/// KaTeX fonts have no metrics for. Those scripts cannot be rendered a
+/// character at a time: Arabic letters join contextually and run right to
+/// left, so the per-glyph model (one box per character, placed at a
+/// precomputed x) produces disconnected letterforms in the wrong order. Worse,
+/// before this node existed such characters resolved to no metrics at all and
+/// were dropped, so the text simply vanished.
+///
+/// A backend that can shape text renders [text] in one call — Flutter's
+/// `TextPainter`, or an SVG `<text>` element — letting the platform handle
+/// shaping and bidi. Backends therefore need a font covering the script;
+/// KaTeX's own fonts do not, so this deliberately falls back to whatever the
+/// platform provides.
+///
+/// The dimensions are supplied by whoever built the node (see
+/// `Options.measureTextRun`): a backend that can measure text reports exact
+/// values, otherwise they are estimated and the surrounding layout is
+/// approximate.
+@immutable
+class TextRunNode extends BoxNode {
+  /// Creates a shaped text run of [text] with the given measured dimensions.
+  const TextRunNode({
+    required this.text,
+    required this.width,
+    required this.height,
+    required this.depth,
+    this.size = 1.0,
+    this.rtl = false,
+  });
+
+  /// The full string to shape and draw as one unit.
+  final String text;
+
+  /// Font-size multiplier applied to the run (KaTeX's `sizeMultiplier`).
+  final double size;
+
+  /// Whether the run's base direction is right-to-left.
+  final bool rtl;
+
+  @override
+  final double width;
+
+  @override
+  final double height;
+
+  @override
+  final double depth;
+
+  @override
+  String toString() => 'TextRunNode("$text", rtl: $rtl, $_dims)';
+}
+
 /// A wrapper node carrying presentation metadata (color, classes, sizing).
 ///
 /// Mirrors KaTeX's `Span`: it groups [children] and may apply a [color],

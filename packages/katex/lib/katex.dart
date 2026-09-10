@@ -9,3 +9,4 @@ export 'src/font_mapping.dart';
 export 'src/math_span.dart' show mathSpan;
 export 'src/math_widget.dart';
 export 'src/render/box_painter.dart';
+export 'src/render/text_run_painter.dart';

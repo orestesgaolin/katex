@@ -11,6 +11,7 @@ library;
 
 import 'package:flutter/widgets.dart';
 import 'package:katex/src/render/box_painter.dart';
+import 'package:katex/src/render/text_run_painter.dart';
 import 'package:katex_dart/katex_dart.dart';
 
 /// The default base font size, in logical pixels per em, used when the caller
@@ -99,6 +100,11 @@ class Math extends StatelessWidget {
           displayMode: displayMode,
           color: _toCssColor(color),
           throwOnError: throwOnError,
+          // Measure complex-script runs (Arabic, Hebrew, …) with the same
+          // TextPainter that will paint them, so the box tree reserves exactly
+          // the space they occupy. Without this the core falls back to a rough
+          // estimate and the surrounding atoms sit slightly wrong.
+          measureTextRun: flutterTextRunMeasurer,
         ),
       );
     } on ParseError catch (error) {

@@ -254,6 +254,7 @@ void main() {
         SvgPathNode() => 'svg',
         EncloseNode() => 'enclose',
         ImageNode() => 'image',
+        TextRunNode() => 'textrun',
       };
       expect(label, isNotEmpty);
     }

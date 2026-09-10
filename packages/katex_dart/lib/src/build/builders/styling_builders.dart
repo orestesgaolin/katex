@@ -10,6 +10,7 @@ import 'package:katex_dart/src/build/build_expression.dart';
 import 'package:katex_dart/src/build/builders/units.dart';
 import 'package:katex_dart/src/build/options.dart';
 import 'package:katex_dart/src/build/style.dart';
+import 'package:katex_dart/src/build/text_run.dart';
 
 /// Registers the wrapper/presentation builders into [registry].
 void registerStylingBuilders(Map<String, GroupBuilder> registry) {
@@ -109,9 +110,75 @@ Options _optionsWithFont(ast.TextNode group, Options options) {
   return options;
 }
 
+/// Splits [body] into segments, building any maximal run of complex-script
+/// characters (Arabic, Hebrew, …) as a single [TextRunNode].
+///
+/// The parser emits one node per character, which is fine for Latin but wrong
+/// for cursive right-to-left scripts: shaping and bidi only work on a whole
+/// string. Those characters also have no KaTeX metrics, so individually they
+/// would each build to nothing and the word would disappear. Collecting them
+/// into one run is what lets a backend hand the string to a real text engine.
+///
+/// Only characters [isComplexScript] accepts are affected, so text that
+/// renders today takes exactly the path it did before.
+List<BoxNode> _buildTextBody(List<ast.ParseNode> body, Options options) {
+  final out = <BoxNode>[];
+  var i = 0;
+  while (i < body.length) {
+    final runStart = i;
+    final buffer = StringBuffer();
+    var rtl = false;
+    while (i < body.length) {
+      final node = body[i];
+      if (node is! ast.SymbolParseNode) break;
+      final text = node.text;
+      if (text.isEmpty || !isComplexScript(text.runes.first)) break;
+      buffer.write(text);
+      rtl = rtl || isRtl(text.runes.first);
+      i++;
+    }
+
+    if (i > runStart) {
+      final run = buffer.toString();
+      final metrics = options.measureTextRun(run);
+      out.add(
+        withAtomClass(
+          TextRunNode(
+            text: run,
+            width: metrics.width * options.sizeMultiplier,
+            height: metrics.height * options.sizeMultiplier,
+            depth: metrics.depth * options.sizeMultiplier,
+            size: options.sizeMultiplier,
+            rtl: rtl,
+          ),
+          'mord',
+          options: options,
+        ),
+      );
+      continue;
+    }
+
+    // Not the start of a run — build this one node normally.
+    out.add(buildGroup(body[i], options));
+    i++;
+  }
+  return out;
+}
+
 BoxNode _buildText(ast.TextNode group, Options options) {
   final newOptions = _optionsWithFont(group, options);
-  final inner = buildExpression(group.body, newOptions, isRealGroup: true);
+  final hasComplexScript = group.body.any(
+    (n) =>
+        n is ast.SymbolParseNode &&
+        n.text.isNotEmpty &&
+        isComplexScript(n.text.runes.first),
+  );
+  // The fast path is the normal one; only fall back to manual segmentation
+  // when a complex script is actually present, so ordinary text keeps
+  // buildExpression's inter-atom spacing and ligature handling untouched.
+  final inner = hasComplexScript
+      ? _buildTextBody(group.body, newOptions)
+      : buildExpression(group.body, newOptions, isRealGroup: true);
   return withAtomClass(
     makeSpan(inner, classes: const ['text'], options: newOptions),
     'mord',
