@@ -69,7 +69,13 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
   final valueSub = group.sub;
   final builtBase = buildGroup(valueBase, options);
 
+  // KaTeX's font parameters are in the em of the current style (the scripts
+  // sit in a `sizing` span); the box tree uses one absolute em, so in script
+  // style every parameter is scaled by the size multiplier.
   final metrics = options.fontMetrics();
+  final scale = options.sizeMultiplier;
+  double param(String name) => metrics[name] * scale;
+  final xHeight = metrics.xHeight * scale;
 
   var supShift = 0.0;
   var subShift = 0.0;
@@ -83,8 +89,7 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     final newOptions = options.havingStyle(options.style.sup());
     supm = buildGroup(valueSup, newOptions, options);
     if (!isCharBox) {
-      supShift =
-          builtBase.height - newOptions.fontMetrics()['supDrop'] * newOptions.sizeMultiplier / options.sizeMultiplier;
+      supShift = builtBase.height - newOptions.fontMetrics()['supDrop'] * newOptions.sizeMultiplier;
     }
   }
 
@@ -92,26 +97,25 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     final newOptions = options.havingStyle(options.style.sub());
     subm = buildGroup(valueSub, newOptions, options);
     if (!isCharBox) {
-      subShift =
-          builtBase.depth + newOptions.fontMetrics()['subDrop'] * newOptions.sizeMultiplier / options.sizeMultiplier;
+      subShift = builtBase.depth + newOptions.fontMetrics()['subDrop'] * newOptions.sizeMultiplier;
     }
   }
 
   // Rule 18c: minimum sup shift.
   final double minSupShift;
   if (options.style == Style.DISPLAY) {
-    minSupShift = metrics['sup1'];
+    minSupShift = param('sup1');
   } else if (options.style.cramped) {
-    minSupShift = metrics['sup3'];
+    minSupShift = param('sup3');
   } else {
-    minSupShift = metrics['sup2'];
+    minSupShift = param('sup2');
   }
 
-  // scriptspace is a font-size-independent size, so scale it appropriately for
-  // use as the marginRight (KaTeX: `makeEm((0.5 / ptPerEm) / multiplier)`). It
-  // is appended as a trailing kern to every script row, matching KaTeX's
-  // `marginRight` on each vlist child.
-  final marginRight = (0.5 / metrics.ptPerEm) / options.sizeMultiplier;
+  // scriptspace is a font-size-independent 0.5pt. KaTeX divides it by the
+  // multiplier because its margin is in the current style's em; in absolute em
+  // it is 0.05 at every size. It is appended as a trailing kern to every script
+  // row, matching KaTeX's `marginRight` on each vlist child.
+  final marginRight = 0.5 / metrics.ptPerEm;
 
   // KaTeX's `base instanceof SymbolNode` check: in this port a single-symbol
   // base is a `mord` span wrapping one GlyphNode (our ord builders tag the
@@ -132,15 +136,15 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
   if (supm != null && subm != null) {
     supShift = math.max(
       math.max(supShift, minSupShift),
-      supm.depth + 0.25 * metrics.xHeight,
+      supm.depth + 0.25 * xHeight,
     );
-    subShift = math.max(subShift, metrics['sub2']);
+    subShift = math.max(subShift, param('sub2'));
 
-    final ruleWidth = metrics.defaultRuleThickness;
+    final ruleWidth = metrics.defaultRuleThickness * scale;
     final maxWidth = 4 * ruleWidth;
     if ((supShift - supm.depth) - (subm.height - subShift) < maxWidth) {
       subShift = maxWidth - (supShift - supm.depth) + subm.height;
-      final psi = 0.8 * metrics.xHeight - (supShift - supm.depth);
+      final psi = 0.8 * xHeight - (supShift - supm.depth);
       if (psi > 0) {
         supShift += psi;
         subShift -= psi;
@@ -162,8 +166,8 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
     );
   } else if (subm != null) {
     subShift = math.max(
-      math.max(subShift, metrics['sub1']),
-      subm.height - 0.8 * metrics.xHeight,
+      math.max(subShift, param('sub1')),
+      subm.height - 0.8 * xHeight,
     );
     supsub = makeVList(
       positionType: VListPositionType.shift,
@@ -177,7 +181,7 @@ BoxNode buildSupSub(SupSubNode group, Options options) {
   } else if (supm != null) {
     supShift = math.max(
       math.max(supShift, minSupShift),
-      supm.depth + 0.25 * metrics.xHeight,
+      supm.depth + 0.25 * xHeight,
     );
     supsub = makeVList(
       positionType: VListPositionType.shift,
