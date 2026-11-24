@@ -796,6 +796,68 @@ void main() {
     );
   });
 
+  // Issue #3 — nested scripts. KaTeX's font parameters (sup2, sub1, xHeight,
+  // scriptspace, …) are in the em of the current style; in script style they
+  // must be scaled by the size multiplier (0.7) into the box tree's em.
+  // Expected values from KaTeX 0.17.0 (`__renderToDomTree`: vlist `top` minus
+  // the pstrut, times the style's size; widths measured in the browser).
+  group('nested scripts are scaled to the script size (#3)', () {
+    List<VList> vlistsOf(BoxNode root) => _flatten(root).whereType<VList>().toList();
+    List<KernNode> rowKernsOf(VList v) => [
+      for (final p in v.positions)
+        if (p.box case HBox(:final children)) ...children.whereType<KernNode>(),
+    ];
+
+    test(r'e^{-x^2/2}: nested ^2 shift, scriptspace, height and width', () {
+      final root = renderToBox(r'e^{-x^2/2}');
+      final vlists = vlistsOf(root);
+      expect(vlists, hasLength(2));
+      final outer = vlists[0];
+      final nested = vlists[1];
+      // Outer superscript: sup2 = 0.363 (text style, multiplier 1).
+      expect(outer.positions.single.shift, closeTo(-0.363, 1e-4));
+      // Nested ^2: sup2 for script style is 0.431 script em = 0.3017 em.
+      expect(nested.positions.single.shift, closeTo(-0.431 * 0.7, 1e-4));
+      // scriptspace is 0.5pt, i.e. 0.05 em at every size.
+      expect(rowKernsOf(nested).single.width, closeTo(0.05, 1e-4));
+      expect(root.height, closeTo(0.98692, 1e-4));
+      expect(root.depth, closeTo(0, 1e-4));
+      expect(root.width, closeTo(2.46087, 1e-3));
+    });
+
+    test(r'x_{y_i}: nested _i shift, italic cancel, depth and width', () {
+      final root = renderToBox(r'x_{y_i}');
+      final vlists = vlistsOf(root);
+      expect(vlists, hasLength(2));
+      // Outer subscript: sub1 = 0.15 (text style).
+      expect(vlists[0].positions.single.shift, closeTo(0.15, 1e-4));
+      // Nested _i: sub1 for script style is 0.143 script em = 0.1001 em.
+      expect(vlists[1].positions.single.shift, closeTo(0.143 * 0.7, 1e-4));
+      final kerns = rowKernsOf(vlists[1]);
+      // -italic of the script-size y (0.0359 script em), then scriptspace.
+      expect(kerns.first.width, closeTo(-0.03588 * 0.7, 1e-4));
+      expect(kerns.last.width, closeTo(0.05, 1e-4));
+      expect(root.height, closeTo(0.43056, 1e-4));
+      expect(root.depth, closeTo(0.28611, 1e-4));
+      expect(root.width, closeTo(1.18750, 1e-3));
+    });
+
+    test(r'x_{y^2_j}: nested paired scripts, depth and width', () {
+      final root = renderToBox(r'x_{y^2_j}');
+      expect(vlistsOf(root), hasLength(2));
+      expect(root.height, closeTo(0.43056, 1e-4));
+      expect(root.depth, closeTo(0.54160, 1e-4));
+      expect(root.width, closeTo(1.29003, 1e-3));
+    });
+
+    test(r'top-level scripts keep their KaTeX positions (x^2, x_i, x^2_i)', () {
+      expect(vlistsOf(renderToBox('x^2')).single.positions.single.shift, closeTo(-0.363, 1e-4));
+      expect(vlistsOf(renderToBox('x_i')).single.positions.single.shift, closeTo(0.15, 1e-4));
+      final both = vlistsOf(renderToBox('x^2_i')).single.positions;
+      expect(both.map((p) => p.shift), [closeTo(0.2587, 1e-4), closeTo(-0.363, 1e-4)]);
+    });
+  });
+
   // T-034 (RC-c) — genfrac nested-fraction depth + `\cfrac` strut.
   //
   // The bug: `\cfrac` was missing the `\strut` that KaTeX inserts into the
